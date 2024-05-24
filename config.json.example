@@ -1,0 +1,11 @@
+{
+  "ssh_servers": [
+    "127.0.0.1", "127.0.0.7"
+  ],
+  "http_servers": ["localhost"],
+  "username": "user",
+  "prometheus_gw": "http://prometheus:9091",
+  "prometheus_user": "user",
+  "prometheus_pw": "secret",
+  "ipinfo_token": "secret"
+}
