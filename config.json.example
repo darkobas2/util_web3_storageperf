@@ -3,6 +3,7 @@
     "127.0.0.1", "127.0.0.7"
   ],
   "http_servers": ["localhost"],
+  "ipfs_servers": ["ipfs.io", "w3s.link", "ipfs.eth.aragon.network"],
   "username": "user",
   "prometheus_gw": "http://prometheus:9091",
   "prometheus_user": "user",

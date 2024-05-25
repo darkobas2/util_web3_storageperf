@@ -16,6 +16,8 @@ import ipinfo
 import asyncio, asyncssh, aiohttp
 import logging
 import socket
+import ipfs_api
+import tempfile
 from aiohttp import ClientSession
 from Crypto.Hash import keccak
 from prometheus_client import CollectorRegistry, Summary, Histogram, Gauge, push_to_gateway
@@ -37,7 +39,7 @@ prometheus_client.REGISTRY.unregister(prometheus_client.PROCESS_COLLECTOR)
 
 # Load configuration from file or environment variables
 def load_config(config_file):
-    global ssh_servers, http_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
+    global ssh_servers, http_servers, ipfs_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
     with open(config_file, 'r') as f:
         config = json.load(f)
 
@@ -48,6 +50,10 @@ def load_config(config_file):
     http_servers = os.getenv('HTTP_SERVERS', config['http_servers'])
     if isinstance(http_servers, str):
         http_servers = http_servers.split(',')
+
+    ipfs_servers = os.getenv('IPFS_SERVERS', config['ipfs_servers'])
+    if isinstance(ipfs_servers, str):
+        ipfs_servers = ipfs_servers.split(',')
 
     prometheus_gw = os.getenv('PROMETHEUS_GW', config['prometheus_gw'])
     prometheus_pw = os.getenv('PROMETHEUS_PW', config['prometheus_pw'])
@@ -138,6 +144,7 @@ def get_ip_from_dns(dns_name):
     return None
 
 async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=5):
+    storage = 'Swarm'
     attempts = 0
     start_time = time.time()
 
@@ -153,14 +160,15 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
                 server_loc = ipinfo_handler.getDetails(server)
                 
                 if sha256sum_output == expected_sha256:
-                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts
+                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage
         except (asyncssh.Error, OSError) as exc:
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
     elapsed_time = time.time() - start_time
-    return elapsed_time, None, None, server, ip, attempts
+    return elapsed_time, None, None, server, ip, attempts, storage
 
 async def http_curl(url, swarmhash, expected_sha256, max_attempts=5):
+    storage = 'Swarm'
     attempts = 0
     start_time = time.time()
 
@@ -176,12 +184,36 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=5):
                     server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
                     
                     if sha256sum_output == expected_sha256:
-                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts
+                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage
         except Exception as exc:
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     elapsed_time = time.time() - start_time
-    return elapsed_time, None, None, get_ip_from_dns(url), url, attempts
+    return elapsed_time, None, None, get_ip_from_dns(url), url, attempts, storage
+
+async def http_ipfs(url, cid, expected_sha256, max_attempts=5):
+    storage = 'Ipfs'
+    attempts = 0
+    start_time = time.time()
+
+    while attempts < max_attempts:
+        attempts += 1
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=86400)) as session:
+                async with session.get('https://' + url + '/ipfs/' + cid) as response:
+                    content = await response.read()
+                    elapsed_time = time.time() - start_time
+                    sha256sum_output = hashlib.sha256(content).hexdigest()
+                    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+                    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
+
+                    if sha256sum_output == expected_sha256:
+                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage
+        except Exception as exc:
+            logging.error(f"HTTP error on attempt {attempts}: {exc}")
+
+    elapsed_time = time.time() - start_time
+    return elapsed_time, None, None, get_ip_from_dns(url), url, attempts, storage
 
 def upload_file(data, url):
     headers = {
@@ -209,7 +241,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global ssh_servers, http_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
+    global ssh_servers, http_servers, ipfs_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
     repeat_count = args.repeat
     continuous = args.continuous
 
@@ -225,6 +257,16 @@ async def main(args):
                 start_upload_time = time.time()
                 response = upload_file(random_json, args.url)
                 upload_duration = time.time() - start_upload_time
+                # Upload to IPFS using a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json') as tmpfile:
+                    tmpfile.write(random_json)
+                    tmpfile.flush()  # Ensure all data is written
+                    #cid = ipfs_api.publish(tmpfile.name)
+                    ipfs_response = ipfs_api.http_client.add(tmpfile.name)
+                    ipfs_hash = ipfs_response['Hash']
+                    ipfs_file_name = ipfs_response['Name']
+                    cid = ipfs_hash + '?filename=' + ipfs_file_name
+                    logging.info(f'Successfully uploaded file to IPFS. cid: {cid}')
 
                 if 200 <= response.status_code < 300:
                     response_data = response.json()
@@ -245,7 +287,12 @@ async def main(args):
                     task = http_curl(url, response_file_swarmhash, sha256_hash)
                     http_tasks.append(task)
 
-                all_tasks = ssh_tasks + http_tasks
+                ipfs_tasks = []
+                for url in ipfs_servers:
+                    task = http_ipfs(url, cid, sha256_hash)
+                    ipfs_tasks.append(task)
+
+                all_tasks = ssh_tasks + http_tasks + ipfs_tasks
                 results = await asyncio.gather(*all_tasks, return_exceptions=True)
 
                 fastest_time = float('inf')
@@ -262,8 +309,8 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts = result
-                        logging.info(f"Curl to {server} took {elapsed_time} seconds with {attempts} attempts. Location: {server_loc.city if server_loc else 'Unknown'}")
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
+                        logging.info(f"{storage} download from {server} took {elapsed_time} seconds with {attempts} attempts. Location: {server_loc.city if server_loc else 'Unknown'}")
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
@@ -296,7 +343,7 @@ if __name__ == '__main__':
     job_label = f'web3storage_speed_{hostname}'
     load_config('config.json')
     parser = argparse.ArgumentParser(description='Swarm speed test for Gnosis.')
-    parser.add_argument('--url', type=str, help='URL for uploading data')
+    parser.add_argument('--url', type=str, default="https://bee-1.fairdatasociety.org/bzz", help='URL for uploading data')
     parser.add_argument('--size', type=int, default=100, help='size of data in kb')
     parser.add_argument('--prometheus_push_url', type=str, help='Push URL for Prometheus metrics', default='')
     parser.add_argument('--repeat', type=int, help='Number of times to repeat the upload process', default=1)
