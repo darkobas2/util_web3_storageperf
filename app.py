@@ -63,12 +63,18 @@ def load_config(config_file):
     ipinfo_token = os.getenv('IPINFO_TOKEN', config['ipinfo_token'])
 
 def pgw_auth_handler(url, method, timeout, headers, data):
+    global prometheus_user, prometheus_pw
     return basic_auth_handler(url, method, timeout, headers, data, prometheus_user, prometheus_pw)
 
 registry = CollectorRegistry()
 DL_TIME = Gauge('util_web3_storage_download_time',
                        'Time spent processing request',
-                       labelnames=['status', 'group', 'version'],
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
+DL_TIME_SECONDARY = Gauge('util_web3_storage_download_secondary',
+                       'Time spent processing request',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 UL_TIME = Gauge('util_web3_storage_upload_time',
@@ -80,18 +86,13 @@ def signal_handler(sig, frame):
     global args
     # This function will be called when Ctrl+C is pressed
     logging.info("Ctrl+C pressed. Cleaning up or running specific code...")
-    #cleanup_prometheus(args)
-    #push_to_gateway(args.prometheus_push_url, job=job_label, registry=registry, handler=pgw_auth_handler)
+    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
     sys.exit(0)  # Exit the script gracefully
 
 def fetch_data(url):
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
-
-#def cleanup_prometheus(args):
-#    push_to_gateway(args.prometheus_push_url, job=job_label, registry=registry, handler=pgw_auth_handler)
-
 
 def generate_random_string(length):
     letters = string.ascii_letters + string.digits
@@ -143,77 +144,128 @@ def get_ip_from_dns(dns_name):
     print(f"Error resolving DNS name: {dns_name}")
     return None
 
-async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=5):
+async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=15):
+    global args
     storage = 'Swarm'
     attempts = 0
-    start_time = time.time()
-
+    initial_start_time = time.time()
+    
     while attempts < max_attempts:
         attempts += 1
         try:
             async with asyncssh.connect(server, username=username) as conn:
                 curl_command = f"curl -sSL {ip}:1633/bzz/{swarmhash}"
+                start_time = time.time()
                 result = await conn.run(curl_command)
                 elapsed_time = time.time() - start_time
+
                 sha256sum_output = hashlib.sha256(result.stdout.encode('utf-8')).hexdigest()
                 ipinfo_handler = ipinfo.getHandler(ipinfo_token)
                 server_loc = ipinfo_handler.getDetails(server)
-                
+
                 if sha256sum_output == expected_sha256:
-                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage
+                    #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
+                    DL_TIME.labels(storage=storage, server=ip, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
+                    # Measure the time for a secondary download
+                    secondary_start_time = time.time()
+                    secondary_result = await conn.run(curl_command)
+                    secondary_elapsed_time = time.time() - secondary_start_time
+                    secondary_sha256sum_output = hashlib.sha256(secondary_result.stdout.encode('utf-8')).hexdigest()
+
+                    if secondary_sha256sum_output == expected_sha256:
+                        #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
+                        DL_TIME_SECONDARY.labels(storage=storage, server=ip, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
+                    else:
+                        logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+
+                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time
+                
         except (asyncssh.Error, OSError) as exc:
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
-    elapsed_time = time.time() - start_time
-    return elapsed_time, None, None, server, ip, attempts, storage
+    total_elapsed_time = time.time() - initial_start_time
+    return total_elapsed_time, None, server_loc, server, ip, attempts, storage, None
 
-async def http_curl(url, swarmhash, expected_sha256, max_attempts=5):
+async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
+    global args
     storage = 'Swarm'
     attempts = 0
-    start_time = time.time()
+    initial_start_time = time.time()
 
     while attempts < max_attempts:
         attempts += 1
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=86400)) as session:
-                async with session.get('https://' + url + '/bzz/' + swarmhash) as response:
+                async with session.get(f'https://{url}/bzz/{swarmhash}') as response:
                     content = await response.read()
-                    elapsed_time = time.time() - start_time
+                    elapsed_time = time.time() - initial_start_time
                     sha256sum_output = hashlib.sha256(content).hexdigest()
                     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
                     server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
-                    
+
                     if sha256sum_output == expected_sha256:
-                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage
+                        #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
+
+                        # Measure the time for a secondary download
+                        secondary_start_time = time.time()
+                        async with session.get(f'https://{url}/bzz/{swarmhash}') as secondary_response:
+                            secondary_content = await secondary_response.read()
+                            secondary_elapsed_time = time.time() - secondary_start_time
+                            secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
+
+                            if secondary_sha256sum_output == expected_sha256:
+                                #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
+                                DL_TIME_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
+                            else:
+                                logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+
+                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
+
         except Exception as exc:
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
-    elapsed_time = time.time() - start_time
-    return elapsed_time, None, None, get_ip_from_dns(url), url, attempts, storage
+    total_elapsed_time = time.time() - initial_start_time
+    return total_elapsed_time, None, server_loc, get_ip_from_dns(url), url, attempts, storage, None
 
-async def http_ipfs(url, cid, expected_sha256, max_attempts=5):
+async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
+    global args
     storage = 'Ipfs'
     attempts = 0
-    start_time = time.time()
+    initial_start_time = time.time()
 
     while attempts < max_attempts:
         attempts += 1
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=86400)) as session:
-                async with session.get('https://' + url + '/ipfs/' + cid) as response:
+                async with session.get(f'https://{url}/ipfs/{cid}') as response:
                     content = await response.read()
-                    elapsed_time = time.time() - start_time
+                    elapsed_time = time.time() - initial_start_time
                     sha256sum_output = hashlib.sha256(content).hexdigest()
                     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
                     server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
 
                     if sha256sum_output == expected_sha256:
-                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage
+                        #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
+                        # Measure the time for a secondary download
+                        secondary_start_time = time.time()
+                        async with session.get(f'https://{url}/ipfs/{cid}') as secondary_response:
+                            secondary_content = await secondary_response.read()
+                            secondary_elapsed_time = time.time() - secondary_start_time
+                            secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
+
+                            if secondary_sha256sum_output == expected_sha256:
+                                #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
+                                DL_TIME_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
+                            else:
+                                logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+
+                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
+
         except Exception as exc:
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
-    elapsed_time = time.time() - start_time
-    return elapsed_time, None, None, get_ip_from_dns(url), url, attempts, storage
+    total_elapsed_time = time.time() - initial_start_time
+    return total_elapsed_time, None, server_loc, get_ip_from_dns(url), url, attempts, storage, None
 
 def upload_file(data, url):
     headers = {
@@ -241,7 +293,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global ssh_servers, http_servers, ipfs_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
+    global ssh_servers, http_servers, ipfs_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label
     repeat_count = args.repeat
     continuous = args.continuous
 
@@ -305,17 +357,30 @@ async def main(args):
                 slowest_ip = None
                 slowest_attempts = 0
 
+                fastest_secondary_time = float('inf')
+                fastest_secondary_server = None
+                fastest_secondary_ip = None
+
+                slowest_secondary_time = 0
+                slowest_secondary_server = None
+                slowest_secondary_ip = None
+
                 for result in results:
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-                        logging.info(f"{storage} download from {server} took {elapsed_time} seconds with {attempts} attempts. Location: {server_loc.city if server_loc else 'Unknown'}")
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        logging.info("-----------------START-----------------------")
+                        logging.info(f"size: {args.size}kb")
+                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts. Size {args.size} ")
 
                         if sha256_hash == sha256sum_output:
+                            if secondary_elapsed_time is not None:
+                                logging.info(f"{storage} Retry download time: {secondary_elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'}")
                             logging.info("SHA256 hashes match.")
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
+                        logging.info("-----------------END-------------------------")
 
                         if elapsed_time < fastest_time:
                             fastest_time = elapsed_time
@@ -329,9 +394,34 @@ async def main(args):
                             slowest_ip = ip
                             slowest_attempts = attempts
 
+                        if secondary_elapsed_time is not None:
+                            if secondary_elapsed_time < fastest_secondary_time:
+                                fastest_secondary_time = secondary_elapsed_time
+                                fastest_secondary_server = server
+                                fastest_secondary_ip = ip
+
+                            if secondary_elapsed_time > slowest_secondary_time:
+                                slowest_secondary_time = secondary_elapsed_time
+                                slowest_secondary_server = server
+                                slowest_secondary_ip = ip
+
+                        DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
+                logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
+                if fastest_secondary_time < float('inf'):
+                    logging.info(f"Fastest secondary download time: {fastest_secondary_time} seconds for server {fastest_secondary_server} and IP {fastest_secondary_ip}")
+                else:
+                    logging.info("No successful secondary downloads to report fastest time.")
 
+                if slowest_secondary_time > 0:
+                    logging.info(f"Slowest secondary download time: {slowest_secondary_time} seconds for server {slowest_secondary_server} and IP {slowest_secondary_ip}")
+                else:
+                    logging.info("No successful secondary downloads to report slowest time.")
+
+                logging.info("-----------------SUMMARY END-------------------------")
+
+            push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
             logging.info('All repeats done')
             if not continuous:
                 break
@@ -345,7 +435,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Swarm speed test for Gnosis.')
     parser.add_argument('--url', type=str, default="https://bee-1.fairdatasociety.org/bzz", help='URL for uploading data')
     parser.add_argument('--size', type=int, default=100, help='size of data in kb')
-    parser.add_argument('--prometheus_push_url', type=str, help='Push URL for Prometheus metrics', default='')
     parser.add_argument('--repeat', type=int, help='Number of times to repeat the upload process', default=1)
     parser.add_argument('--continuous', action='store_true', help='Continuously upload chunks (overrides --repeat)')
     parser.add_argument('--upload', action='store_true', help='Upload')
@@ -353,8 +442,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     signal.signal(signal.SIGINT, signal_handler)
     asyncio.run(main(args))
-    registry = CollectorRegistry()
-    time.sleep(10)
-    #cleanup_prometheus(args)
 
 
