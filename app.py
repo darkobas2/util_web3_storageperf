@@ -72,6 +72,10 @@ DL_TIME = Gauge('util_web3_storage_download_time',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
+DL_TIME_EXTREMES = Gauge('util_web3_storage_download_extremes',
+                       'winners and loosers',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
 DL_TIME_SECONDARY = Gauge('util_web3_storage_download_secondary',
                        'Time spent processing request',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
@@ -433,6 +437,8 @@ async def main(args):
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
+                DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
+                DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
                 if fastest_secondary_time < float('inf'):
                     logging.info(f"Fastest secondary download time: {fastest_secondary_time} seconds for server {fastest_secondary_server} and IP {fastest_secondary_ip}")
                 else:
