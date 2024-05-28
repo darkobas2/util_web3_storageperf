@@ -165,18 +165,14 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
 
                 if sha256sum_output == expected_sha256:
                     #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
-                    DL_TIME.labels(storage=storage, server=ip, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
                     # Measure the time for a secondary download
                     secondary_start_time = time.time()
                     secondary_result = await conn.run(curl_command)
                     secondary_elapsed_time = time.time() - secondary_start_time
                     secondary_sha256sum_output = hashlib.sha256(secondary_result.stdout.encode('utf-8')).hexdigest()
 
-                    if secondary_sha256sum_output == expected_sha256:
-                        #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
-                        DL_TIME_SECONDARY.labels(storage=storage, server=ip, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
-                    else:
-                        logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+                    if secondary_sha256sum_output != expected_sha256:
+                        logging.error(f"{storage} {ip} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
 
                     return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time
                 
@@ -213,11 +209,8 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
                             secondary_elapsed_time = time.time() - secondary_start_time
                             secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
 
-                            if secondary_sha256sum_output == expected_sha256:
-                                #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
-                                DL_TIME_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
-                            else:
-                                logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+                            if secondary_sha256sum_output != expected_sha256:
+                                logging.error(f"{storage} {url} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
 
                         return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
 
@@ -253,11 +246,8 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
                             secondary_elapsed_time = time.time() - secondary_start_time
                             secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
 
-                            if secondary_sha256sum_output == expected_sha256:
-                                #logging.info(f"Secondary SHA256 hash matches: {secondary_sha256sum_output}")
-                                DL_TIME_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
-                            else:
-                                logging.error(f"Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
+                            if secondary_sha256sum_output != expected_sha256:
+                                logging.error(f"{storage} {url} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
 
                         return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
 
@@ -275,12 +265,43 @@ def upload_file(data, url):
     return response
 
 async def get_random_ip_from_server(server, username):
-    async with asyncssh.connect(server, username=username) as conn:
-        command = "sudo kubectl get svc -n bee -o json | jq '.items[] | select(.metadata.labels.endpoint == \"api\").spec.clusterIP'"
-        result = await conn.run(command, check=True)
-        ip_addresses = result.stdout.strip().split("\n")
-        chosen_ips = random.sample(ip_addresses, min(1, len(ip_addresses)))
-        return server, chosen_ips
+    try:
+        async with asyncssh.connect(server, username=username) as conn:
+            try:
+                # Check if kubectl is available
+                which_command = "which kubectl"
+                which_result = await conn.run(which_command)
+
+                if which_result.exit_status == 0:
+                    # kubectl is available, get the IPs using kubectl
+                    kubectl_command = "sudo kubectl get svc -n bee -o json | jq '.items[] | select(.metadata.labels.endpoint == \"api\").spec.clusterIP'"
+                    result = await conn.run(kubectl_command, check=True)
+
+                    ip_addresses = result.stdout.strip().split("\n")
+                    if not ip_addresses or (len(ip_addresses) == 1 and ip_addresses[0] == ""):
+                        ip_addresses = [os.environ.get('HOSTNAME', 'localhost')]  # Default to 'localhost' if HOSTNAME is not set
+                else:
+                    # kubectl is not available, use HOSTNAME
+                    ip_addresses = [os.environ.get('HOSTNAME', 'localhost')]  # Default to 'localhost' if HOSTNAME is not set
+            except asyncssh.ProcessError as e:
+                if e.exit_status == 127:
+                    logging.warning(f"kubectl not found on server {server}. Falling back to HOSTNAME.")
+                    ip_addresses = [os.environ.get('HOSTNAME', 'localhost')]  # Default to 'localhost' if HOSTNAME is not set
+                else:
+                    raise e
+
+            chosen_ips = random.sample(ip_addresses, min(1, len(ip_addresses)))
+            return server, chosen_ips
+
+    except asyncssh.Error as exc:
+        logging.error(f"get ip: SSH error on server {server}: {exc}")
+        ip_addresses = [os.environ.get('HOSTNAME', 'localhost')]  # Default to 'localhost' if HOSTNAME is not set
+        return server, ip_addresses
+
+    except Exception as exc:
+        logging.error(f"get ip: Unexpected error on server {server}: {exc}")
+        ip_addresses = [os.environ.get('HOSTNAME', 'localhost')]  # Default to 'localhost' if HOSTNAME is not set
+        return server, ip_addresses
 
 async def get_random_ip_from_servers(servers, username):
     server_user_ips = {}
@@ -309,6 +330,7 @@ async def main(args):
                 start_upload_time = time.time()
                 response = upload_file(random_json, args.url)
                 upload_duration = time.time() - start_upload_time
+                logging.info(f'Upload to swarm duration: {upload_duration}')
                 # Upload to IPFS using a temporary file
                 with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json') as tmpfile:
                     tmpfile.write(random_json)
@@ -377,6 +399,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             if secondary_elapsed_time is not None:
                                 logging.info(f"{storage} Retry download time: {secondary_elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'}")
+                                DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
                             logging.info("SHA256 hashes match.")
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
@@ -406,6 +429,7 @@ async def main(args):
                                 slowest_secondary_ip = ip
 
                         DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
+                        push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
