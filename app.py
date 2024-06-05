@@ -228,7 +228,6 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     attempts = 0
     initial_start_time = time.time()
     cid = cid.split("?", 1)[0]
-    print(cid)
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
     server_loc = ipinfo_handler.getDetails(ip)
 
