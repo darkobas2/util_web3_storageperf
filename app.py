@@ -221,7 +221,6 @@ def get_ip_from_dns(dns_name):
         print(f"Error resolving DNS name: {dns_name}")
         return None
 
-
 async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     global args
     storage = 'Ipfs'
@@ -230,38 +229,38 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     cid = cid.split("?", 1)[0]
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
     server_loc = ipinfo_handler.getDetails(ip)
+    output_file = f"/tmp/{cid}"
 
     while attempts < max_attempts:
         attempts += 1
         try:
             async with asyncssh.connect(server, username=username) as conn:
                 # Redirect output to a file
-                output_file = f"{cid}.out"
                 ipget_command = f"ipget -o {output_file} {cid}"
-                result = await conn.run(ipget_command)
+                await conn.run(ipget_command)
                 elapsed_time = time.time() - initial_start_time
+                
+                # Calculate SHA256 hash of the file
+                sha_command = f"sha256sum {output_file} | cut -d ' ' -f1"
+                sha256sum_result = await conn.run(sha_command)
+                sha256sum_output = sha256sum_result.stdout.strip()
 
-                # Read the content of the output file
-                if os.path.exists(output_file):
-                    with open(output_file, 'rb') as f:
-                        result = f.read()
+                # Compare the calculated SHA256 with the expected one
+                if sha256sum_output == expected_sha256:
+                    # Remove the temporary output file if it exists
+                    remove_command = f"rm {output_file}"
+                    await conn.run(remove_command)
+                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, None
 
-                    sha256sum_output = hashlib.sha256(result).hexdigest()
-                    if sha256sum_output == expected_sha256:
-                        # Remove the temporary output file if it exists
-                        os.remove(output_file)
-                        
-                        return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, None
+                # Remove the temporary output file if it exists
+                remove_command = f"rm {output_file}"
+                await conn.run(remove_command)
 
         except (asyncssh.Error, OSError) as exc:
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
 
-    # Ensure the temporary output file is removed if it exists
-    if os.path.exists(output_file):
-        os.remove(output_file)
-    
     return total_elapsed_time, None, server_loc, server, ip, attempts, storage, None
 
 async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=15):
@@ -646,7 +645,7 @@ async def main(args):
                     else:
                         elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
                         logging.info("-----------------START-----------------------")
-                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+                        logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
@@ -677,7 +676,7 @@ async def main(args):
                     else:
                         elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
                         logging.info("-----------------START-----------------------")
-                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+                        logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
@@ -712,7 +711,7 @@ async def main(args):
                     else:
                         elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
                         logging.info("-----------------START-----------------------")
-                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+                        logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
@@ -744,7 +743,7 @@ async def main(args):
                     else:
                         elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
                         logging.info("-----------------START-----------------------")
-                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+                        logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
