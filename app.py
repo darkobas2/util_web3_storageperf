@@ -20,7 +20,7 @@ import ipfs_api
 import tempfile
 from aiohttp import ClientSession
 from Crypto.Hash import keccak
-from prometheus_client import CollectorRegistry, Summary, Histogram, Gauge, push_to_gateway
+from prometheus_client import CollectorRegistry, Counter, Summary, Histogram, Gauge, push_to_gateway
 from prometheus_client.exposition import basic_auth_handler
 
 job_label=None
@@ -67,6 +67,26 @@ def pgw_auth_handler(url, method, timeout, headers, data):
     return basic_auth_handler(url, method, timeout, headers, data, prometheus_user, prometheus_pw)
 
 registry = CollectorRegistry()
+NO_MATCH = Counter('util_web3_storage_sha_fail',
+                       'failed to download a file that would match in 15 attempts',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
+NO_MATCH_SECONDARY = Counter('util_web3_storage_sha_fail_secondary',
+                       'failed to download a file that would match in 15 attempts',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
+REPEAT_NO_MATCH = Counter('util_web3_storage_repeat_sha_fail',
+                       'failed to download a file that would match in 15 attempts',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
+REPEAT_NO_MATCH_SECONDARY = Counter('util_web3_storage_repeat_sha_fail_secondary',
+                       'failed to download a file that would match in 15 attempts',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
 DL_TIME = Gauge('util_web3_storage_download_time',
                        'Time spent processing request',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
@@ -81,9 +101,18 @@ DL_TIME_SECONDARY = Gauge('util_web3_storage_download_secondary',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-UL_TIME = Gauge('util_web3_storage_upload_time',
+REPEAT_DL_TIME = Gauge('util_web3_storage_repeat_download_time',
                        'Time spent processing request',
-                       labelnames=['status', 'group', 'version'],
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
+REPEAT_DL_TIME_EXTREMES = Gauge('util_web3_storage_repeat_download_extremes',
+                       'winners and loosers',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+REPEAT_DL_TIME_SECONDARY = Gauge('util_web3_storage_repeat_download_secondary',
+                       'Time spent processing request',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 def signal_handler(sig, frame):
@@ -321,6 +350,13 @@ async def main(args):
     global ssh_servers, http_servers, ipfs_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label
     repeat_count = args.repeat
     continuous = args.continuous
+    references_file = "references.json"
+    # Read existing references from the file
+    if os.path.exists(references_file):
+        with open(references_file, 'r') as f:
+            references = json.load(f)
+    else:
+        references = {"swarm": {}, "ipfs": {}}
 
     if args.upload:
         while True:
@@ -335,24 +371,31 @@ async def main(args):
                 response = upload_file(random_json, args.url)
                 upload_duration = time.time() - start_upload_time
                 logging.info(f'Upload to swarm duration: {upload_duration}')
+                
                 # Upload to IPFS using a temporary file
                 with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json') as tmpfile:
                     tmpfile.write(random_json)
                     tmpfile.flush()  # Ensure all data is written
-                    #cid = ipfs_api.publish(tmpfile.name)
                     ipfs_response = ipfs_api.http_client.add(tmpfile.name)
                     ipfs_hash = ipfs_response['Hash']
                     ipfs_file_name = ipfs_response['Name']
                     cid = ipfs_hash + '?filename=' + ipfs_file_name
                     logging.info(f'Successfully uploaded file to IPFS. cid: {cid}')
+                    references.setdefault("ipfs", {}).setdefault(str(args.size), []).append(cid)
+
 
                 if 200 <= response.status_code < 300:
                     response_data = response.json()
                     response_file_swarmhash = response_data.get("reference", "")
                     logging.info(f'Successfully uploaded file. Swarmhash: {response_file_swarmhash}')
                     logging.info(f'https://bee-3.dev.fairdatasociety.org/bzz/{response_file_swarmhash}')
+                    references.setdefault("swarm", {}).setdefault(str(args.size), []).append(response_file_swarmhash)
                 else:
                     logging.info(f'Error: Failed to upload: {response.status_code}')
+
+                # Save references to JSON file after each upload
+                with open(references_file, 'w') as f:
+                    json.dump(references, f, indent=4)
 
                 ssh_tasks = []
                 for server, chosen_ips in server_user_ips.items():
@@ -407,6 +450,7 @@ async def main(args):
                             logging.info("SHA256 hashes match.")
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
+                            NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
                         logging.info("-----------------END-------------------------")
 
                         if elapsed_time < fastest_time:
@@ -456,6 +500,73 @@ async def main(args):
             if not continuous:
                 break
 
+    elif args.download:
+        server_user_ips = await get_random_ip_from_servers(ssh_servers, username)
+        for size, swarm_hashes in references["swarm"].items():
+            for swarmhash in swarm_hashes:
+                ssh_tasks = []
+                for server, chosen_ips in server_user_ips.items():
+                    for ip in chosen_ips:
+                        task = ssh_curl(ip, swarmhash, server, username, None)  # No need to pass sha256_hash for download
+                        ssh_tasks.append(task)
+
+                http_tasks = []
+                for url in http_servers:
+                    task = http_curl(url, swarmhash, None)  # No need to pass sha256_hash for download
+                    http_tasks.append(task)
+
+                all_tasks = ssh_tasks + http_tasks
+                results = await asyncio.gather(*all_tasks, return_exceptions=True)
+
+                for result in results:
+                    if isinstance(result, Exception):
+                        logging.error(f'Task failed: {str(result)}')
+                    else:
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        logging.info("-----------------START-----------------------")
+                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+
+                        if sha256sum_output:
+                            logging.info("SHA256 hashes match.")
+                        else:
+                            logging.info("SHA256 hashes do !NOT! match.")
+                            REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                        logging.info("-----------------END-------------------------")
+
+                        REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                        if secondary_elapsed_time is not None:
+                            REPEAT_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
+                        push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+
+        for size, cids in references["ipfs"].items():
+            for cid in cids:
+                ipfs_tasks = []
+                for url in ipfs_servers:
+                    task = http_ipfs(url, cid, None)  # No need to pass sha256_hash for download
+                    ipfs_tasks.append(task)
+
+                results = await asyncio.gather(*ipfs_tasks, return_exceptions=True)
+
+                for result in results:
+                    if isinstance(result, Exception):
+                        logging.error(f'Task failed: {str(result)}')
+                    else:
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        logging.info("-----------------START-----------------------")
+                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
+
+                        if sha256sum_output:
+                            logging.info("SHA256 hashes match.")
+                        else:
+                            logging.info("SHA256 hashes do !NOT! match.")
+                            REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                        logging.info("-----------------END-------------------------")
+
+                        REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                        if secondary_elapsed_time is not None:
+                            REPEAT_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
+                        push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+
 
 if __name__ == '__main__':
     logging.info('Welcome to web3 storage speed test')
@@ -468,6 +579,7 @@ if __name__ == '__main__':
     parser.add_argument('--repeat', type=int, help='Number of times to repeat the upload process', default=1)
     parser.add_argument('--continuous', action='store_true', help='Continuously upload chunks (overrides --repeat)')
     parser.add_argument('--upload', action='store_true', help='Upload')
+    parser.add_argument('--download', action='store_true', help='Download')
 
     args = parser.parse_args()
     signal.signal(signal.SIGINT, signal_handler)
