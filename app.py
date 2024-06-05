@@ -399,7 +399,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
 
                             if secondary_sha256sum_output != expected_sha256:
                                 logging.error(f"{storage} {url} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
-                                NO_MATCH_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
+                                NO_MATCH_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
 
                         return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
 
