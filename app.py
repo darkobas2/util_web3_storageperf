@@ -192,15 +192,15 @@ def get_ip_from_dns(dns_name):
         print(f"Error resolving DNS name: {dns_name}")
         return None
 
-async def kill_existing_processes(conn, output_file):
-    """Kill processes using the specified output file."""
-    find_process_command = f"lsof | grep {output_file} | awk '{{print $2}}'"
-    result = await conn.run(find_process_command)
-    pids = result.stdout.split()
-
-    for pid in pids:
-        kill_command = f"kill -9 {pid}"
-        await conn.run(kill_command)
+async def kill_existing_processes(server, username, output_file):
+    async with asyncssh.connect(server, username=username) as conn:
+        """Kill processes using the specified output file."""
+        find_process_command = f"ps -ef | grep {output_file} | awk '{{print $2}}'"
+        result = await conn.run(find_process_command)
+        pids = result.stdout.split()
+        for pid in pids:
+            kill_command = f"kill -9 {pid}"
+            await conn.run(kill_command)
 
 async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     global args
@@ -218,7 +218,7 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
         try:
             async with asyncssh.connect(server, username=username) as conn:
                 # Kill any existing processes using the output file
-                await kill_existing_processes(conn, output_file)
+                await kill_existing_processes(server, username, output_file)
 
                 # Redirect output to a file
                 ipget_command = f"ipget -o {output_file} {cid}"
@@ -240,18 +240,20 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
                     # Remove the temporary output file if it exists
                     remove_command = f"rm {output_file}"
                     await conn.run(remove_command)
-                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, None
+                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage
 
                 # Remove the temporary output file if it exists
                 remove_command = f"rm {output_file}"
                 await conn.run(remove_command)
+                await kill_existing_processes(server, username, output_file)
 
         except (asyncssh.Error, OSError) as exc:
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
+    await kill_existing_processes(server, username, output_file)
 
-    return 0, None, server_loc, server, ip, attempts, storage, None
+    return 0, None, server_loc, server, ip, attempts, storage
 
 async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=15):
     global args
@@ -278,7 +280,7 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, server_loc, server, ip, attempts, storage, None
+    return 0, None, server_loc, server, ip, attempts, storage
 
 async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     global args
@@ -330,7 +332,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, None, None, url, attempts, storage, None
+    return 0, None, None, None, url, attempts, storage
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
     global args
@@ -359,7 +361,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, server_loc, get_ip_from_dns(url), url, attempts, storage, None
+    return 0, None, server_loc, get_ip_from_dns(url), url, attempts, storage
 
 def upload_file(data, url):
     headers = {
