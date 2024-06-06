@@ -221,21 +221,34 @@ def get_ip_from_dns(dns_name):
         print(f"Error resolving DNS name: {dns_name}")
         return None
 
+async def kill_existing_processes(conn, output_file):
+    """Kill processes using the specified output file."""
+    find_process_command = f"lsof | grep {output_file} | awk '{{print $2}}'"
+    result = await conn.run(find_process_command)
+    pids = result.stdout.split()
+
+    for pid in pids:
+        kill_command = f"kill -9 {pid}"
+        await conn.run(kill_command)
+
 async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     global args
     storage = 'Ipfs'
     attempts = 0
-    initial_start_time = time.time()
     cid = cid.split("?", 1)[0]
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
     server_loc = ipinfo_handler.getDetails(ip)
     output_file = f"/tmp/{cid}"
     ipget_timeout = 15 * 60  # 15 minutes in seconds
+    initial_start_time = time.time()
 
     while attempts < max_attempts:
         attempts += 1
         try:
             async with asyncssh.connect(server, username=username) as conn:
+                # Kill any existing processes using the output file
+                await kill_existing_processes(conn, output_file)
+
                 # Redirect output to a file
                 ipget_command = f"ipget -o {output_file} {cid}"
                 try:
@@ -243,7 +256,7 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
                 except asyncio.TimeoutError:
                     logging.error(f"ipget command timed out on attempt {attempts}")
                     continue  # Retry if timeout occurs
-                
+
                 elapsed_time = time.time() - initial_start_time
 
                 # Calculate SHA256 hash of the file
@@ -273,6 +286,8 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
     global args
     storage = 'Swarm'
     attempts = 0
+    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+    server_loc = ipinfo_handler.getDetails(server)
     initial_start_time = time.time()
     
     while attempts < max_attempts:
@@ -284,8 +299,6 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
                 elapsed_time = time.time() - initial_start_time
 
                 sha256sum_output = hashlib.sha256(result.stdout.encode('utf-8')).hexdigest()
-                ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-                server_loc = ipinfo_handler.getDetails(server)
 
                 if sha256sum_output == expected_sha256:
                     #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
@@ -311,7 +324,6 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     global args
     storage = 'Swarm'
     attempts = 0
-    initial_start_time = time.time()
 
     # Extract IP address and port if present
     if ':' in url:
@@ -319,6 +331,10 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     else:
         ip = url
         port = None
+
+    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+    initial_start_time = time.time()
 
     while attempts < max_attempts:
         attempts += 1
@@ -345,8 +361,6 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
 
                 elapsed_time = time.time() - initial_start_time
                 sha256sum_output = hashlib.sha256(content).hexdigest()
-                ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-                server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
 
                 if sha256sum_output == expected_sha256:
                     secondary_start_time = time.time()
@@ -381,6 +395,9 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
     global args
     storage = 'Ipfs'
     attempts = 0
+    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
+
     initial_start_time = time.time()
 
     while attempts < max_attempts:
@@ -391,8 +408,6 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
                     content = await response.read()
                     elapsed_time = time.time() - initial_start_time
                     sha256sum_output = hashlib.sha256(content).hexdigest()
-                    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-                    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
 
                     if sha256sum_output == expected_sha256:
                         #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
