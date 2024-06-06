@@ -230,6 +230,7 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
     server_loc = ipinfo_handler.getDetails(ip)
     output_file = f"/tmp/{cid}"
+    ipget_timeout = 15 * 60  # 15 minutes in seconds
 
     while attempts < max_attempts:
         attempts += 1
@@ -237,9 +238,14 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
             async with asyncssh.connect(server, username=username) as conn:
                 # Redirect output to a file
                 ipget_command = f"ipget -o {output_file} {cid}"
-                await conn.run(ipget_command)
-                elapsed_time = time.time() - initial_start_time
+                try:
+                    await asyncio.wait_for(conn.run(ipget_command), timeout=ipget_timeout)
+                except asyncio.TimeoutError:
+                    logging.error(f"ipget command timed out on attempt {attempts}")
+                    continue  # Retry if timeout occurs
                 
+                elapsed_time = time.time() - initial_start_time
+
                 # Calculate SHA256 hash of the file
                 sha_command = f"sha256sum {output_file} | cut -d ' ' -f1"
                 sha256sum_result = await conn.run(sha_command)
@@ -261,7 +267,7 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
 
     total_elapsed_time = time.time() - initial_start_time
 
-    return total_elapsed_time, None, server_loc, server, ip, attempts, storage, None
+    return 0, None, server_loc, server, ip, attempts, storage, None
 
 async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=15):
     global args
@@ -299,7 +305,7 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
             logging.error(f"SSH error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return total_elapsed_time, None, server_loc, server, ip, attempts, storage, None
+    return 0, None, server_loc, server, ip, attempts, storage, None
 
 async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     global args
@@ -369,7 +375,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return total_elapsed_time, None, None, None, url, attempts, storage, None
+    return 0, None, None, None, url, attempts, storage, None
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
     global args
@@ -407,7 +413,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return total_elapsed_time, None, server_loc, get_ip_from_dns(url), url, attempts, storage, None
+    return 0, None, server_loc, get_ip_from_dns(url), url, attempts, storage, None
 
 def upload_file(data, url):
     headers = {
