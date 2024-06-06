@@ -78,27 +78,12 @@ NO_MATCH = Counter('util_web3_storage_sha_fail',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-NO_MATCH_SECONDARY = Counter('util_web3_storage_sha_fail_secondary',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
-
 REPEAT_NO_MATCH = Counter('util_web3_storage_repeat_sha_fail',
                        'failed to download a file that would match in 15 attempts',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-REPEAT_NO_MATCH_SECONDARY = Counter('util_web3_storage_repeat_sha_fail_secondary',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
-
 OLD_NO_MATCH = Counter('util_web3_storage_old_sha_fail',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
-
-OLD_NO_MATCH_SECONDARY = Counter('util_web3_storage_old_sha_fail_secondary',
                        'failed to download a file that would match in 15 attempts',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
@@ -112,10 +97,6 @@ DL_TIME_EXTREMES = Gauge('util_web3_storage_download_extremes',
                        'winners and loosers',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
-DL_TIME_SECONDARY = Gauge('util_web3_storage_download_secondary',
-                       'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
 
 REPEAT_DL_TIME = Gauge('util_web3_storage_repeat_download_time',
                        'Time spent processing request',
@@ -127,11 +108,6 @@ REPEAT_DL_TIME_EXTREMES = Gauge('util_web3_storage_repeat_download_extremes',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-REPEAT_DL_TIME_SECONDARY = Gauge('util_web3_storage_repeat_download_secondary',
-                       'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
-
 OLD_DL_TIME = Gauge('util_web3_storage_old_download_time',
                        'Time spent processing request',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
@@ -139,11 +115,6 @@ OLD_DL_TIME = Gauge('util_web3_storage_old_download_time',
 
 OLD_DL_TIME_EXTREMES = Gauge('util_web3_storage_old_download_extremes',
                        'winners and loosers',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
-                       registry=registry)
-
-OLD_DL_TIME_SECONDARY = Gauge('util_web3_storage_old_download_secondary',
-                       'Time spent processing request',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
@@ -301,18 +272,7 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
                 sha256sum_output = hashlib.sha256(result.stdout.encode('utf-8')).hexdigest()
 
                 if sha256sum_output == expected_sha256:
-                    #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
-                    # Measure the time for a secondary download
-                    secondary_start_time = time.time()
-                    secondary_result = await conn.run(curl_command)
-                    secondary_elapsed_time = time.time() - secondary_start_time
-                    secondary_sha256sum_output = hashlib.sha256(secondary_result.stdout.encode('utf-8')).hexdigest()
-
-                    if secondary_sha256sum_output != expected_sha256:
-                        logging.error(f"{storage} {ip} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
-                        NO_MATCH_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
-
-                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time
+                    return elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage
                 
         except (asyncssh.Error, OSError) as exc:
             logging.error(f"SSH error on attempt {attempts}: {exc}")
@@ -363,27 +323,8 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
                 sha256sum_output = hashlib.sha256(content).hexdigest()
 
                 if sha256sum_output == expected_sha256:
-                    secondary_start_time = time.time()
-                    try:
-                        async with session.get(base_url_https) as secondary_response:
-                            secondary_content = await secondary_response.read()
-                            if secondary_response.status == 200:
-                                logging.info(f"Successful HTTPS secondary fetch on attempt {attempts}")
-                    except aiohttp.ClientConnectorSSLError:
-                        logging.warning(f"SSL error on secondary, retrying with HTTP for {url}")
-                        async with session.get(base_url_http) as secondary_response:
-                            secondary_content = await secondary_response.read()
-                            if secondary_response.status == 200:
-                                logging.info(f"Successful HTTP secondary fetch on attempt {attempts}")
 
-                    secondary_elapsed_time = time.time() - secondary_start_time
-                    secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
-
-                    if secondary_sha256sum_output != expected_sha256:
-                        logging.error(f"{storage} {url} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
-                        NO_MATCH_SECONDARY.labels(storage=storage, server=url, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
-
-                    return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(ip), url, attempts, storage, secondary_elapsed_time
+                    return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(ip), url, attempts, storage
 
         except Exception as exc:
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
@@ -411,18 +352,8 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
 
                     if sha256sum_output == expected_sha256:
                         #logging.info(f"{server_loc.city} {storage} SHA256 hashes match on attempt {attempts}")
-                        # Measure the time for a secondary download
-                        secondary_start_time = time.time()
-                        async with session.get(f'https://{url}/ipfs/{cid}') as secondary_response:
-                            secondary_content = await secondary_response.read()
-                            secondary_elapsed_time = time.time() - secondary_start_time
-                            secondary_sha256sum_output = hashlib.sha256(secondary_content).hexdigest()
 
-                            if secondary_sha256sum_output != expected_sha256:
-                                logging.error(f"{storage} {url} Secondary SHA256 hash does !NOT! match: {secondary_sha256sum_output}")
-                                NO_MATCH_SECONDARY.labels(storage=storage, server=get_ip_from_dns(url), attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
-
-                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage, secondary_elapsed_time
+                        return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempts, storage
 
         except Exception as exc:
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
@@ -566,27 +497,16 @@ async def main(args):
                 slowest_ip = None
                 slowest_attempts = 0
 
-                fastest_secondary_time = float('inf')
-                fastest_secondary_server = None
-                fastest_secondary_ip = None
-
-                slowest_secondary_time = 0
-                slowest_secondary_server = None
-                slowest_secondary_ip = None
-
                 for result in results:
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
                         logging.info("-----------------START-----------------------")
                         logging.info(f"size: {args.size}kb")
                         logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts. Size {args.size} ")
 
                         if sha256_hash == sha256sum_output:
-                            if secondary_elapsed_time is not None:
-                                logging.info(f"{storage} Retry download time: {secondary_elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'}")
-                                DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(secondary_elapsed_time)
                             logging.info("SHA256 hashes match.")
                             DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
                         else:
@@ -606,32 +526,12 @@ async def main(args):
                             slowest_ip = ip
                             slowest_attempts = attempts
 
-                        if secondary_elapsed_time is not None:
-                            if secondary_elapsed_time < fastest_secondary_time:
-                                fastest_secondary_time = secondary_elapsed_time
-                                fastest_secondary_server = server
-                                fastest_secondary_ip = ip
-
-                            if secondary_elapsed_time > slowest_secondary_time:
-                                slowest_secondary_time = secondary_elapsed_time
-                                slowest_secondary_server = server
-                                slowest_secondary_ip = ip
-
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
                 DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
                 DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
-                if fastest_secondary_time < float('inf'):
-                    logging.info(f"Fastest secondary download time: {fastest_secondary_time} seconds for server {fastest_secondary_server} and IP {fastest_secondary_ip}")
-                else:
-                    logging.info("No successful secondary downloads to report fastest time.")
-
-                if slowest_secondary_time > 0:
-                    logging.info(f"Slowest secondary download time: {slowest_secondary_time} seconds for server {slowest_secondary_server} and IP {slowest_secondary_ip}")
-                else:
-                    logging.info("No successful secondary downloads to report slowest time.")
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
@@ -664,7 +564,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage  = result
                         logging.info("-----------------START-----------------------")
                         logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
@@ -676,8 +576,6 @@ async def main(args):
                             REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
-                        if secondary_elapsed_time is not None:
-                            REPEAT_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
 
         for size, ipfs_entries in references["ipfs"].items():
@@ -695,7 +593,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
                         logging.info("-----------------START-----------------------")
                         logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
@@ -707,8 +605,6 @@ async def main(args):
                             REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
-                        if secondary_elapsed_time is not None:
-                            REPEAT_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
 
     elif args.download:
@@ -730,7 +626,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
                         logging.info("-----------------START-----------------------")
                         logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
@@ -742,8 +638,6 @@ async def main(args):
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
-                        if secondary_elapsed_time is not None:
-                            OLD_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
 
         for size, ipfs_entries in references["ipfs"].items():
@@ -762,7 +656,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, secondary_elapsed_time = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
                         logging.info("-----------------START-----------------------")
                         logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
 
@@ -774,8 +668,6 @@ async def main(args):
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
-                        if secondary_elapsed_time is not None:
-                            OLD_DL_TIME_SECONDARY.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(secondary_elapsed_time)
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
 
 if __name__ == '__main__':
