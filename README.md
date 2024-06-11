@@ -14,13 +14,13 @@ Web3 Storage Speed Test is a Python script that utilizes various libraries and A
 
 ## Tests
 
-Test Execution:
+### Test Execution:
 
-Upload:
+#### Upload:
 SWARM: The script uploads the generated data to a Swarm gateway using the upload_file function with a provided URL.
 IPFS: It stores the random data generated to a file and uploads to a IPFS node runing on the local machine using the ipfs_api.http_client.add function, storing the resulting CID for later retrieval. Content is pinned and bandwidth is 1000/300Mbps
 
-Retrieval:
+#### Retrieval:
 
 The script retrieves the uploaded data from various locations:
  - SSH nodes: It uses SSH connections to access Swarm nodes listed in ssh_servers. It selects a random kubernetes pod running bee and access its api. 
@@ -28,18 +28,17 @@ The script retrieves the uploaded data from various locations:
  - IPFS Gateways: It retrieves data from IPFS gateways listed in ipfs_servers using the http_ipfs function. Gateways used are ipfs.io, w3s.link, ipfs.eth.aragon.network, nftstorage.link, cloudflare-ipfs.com
  - IPFS Nodes: Some nodes are prepared with ipfs/ipget tool to fetch the data from the network.
 
-Performance Metrics:
+#### Performance Metrics:
 
 Grafana provides the following metrics which are also explained in the dashboard.
-    Distribution time:
-    - After the newly generated data is uploaded it tries simultaniously retrieve it from various sources around the globe. Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
-    Gateway metrics:
-    - It tries to retrieve the data previously uploaded by the upload (ie. distribution) task from various public gateways. (caching is expected here). Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
+##### Distribution time:
+- After the newly generated data is uploaded it tries simultaniously retrieve it from various sources around the globe. Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
+##### Gateway metrics:
+- It tries to retrieve the data previously uploaded by the upload (ie. distribution) task from various public gateways. (caching is expected here). Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
+##### Download metrics:
+- It tries to retrieve the data previously uploaded by the upload (ie. distribution) task from various swarm nodes or ipfs hosts preinstalled with ipfs/ipget tool. (*TODO: switch to a similar tool for swarm once its available). Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
 
-    Download metrics:
-    - It tries to retrieve the data previously uploaded by the upload (ie. distribution) task from various swarm nodes or ipfs hosts preinstalled with ipfs/ipget tool. (*TODO: switch to a similar tool for swarm once its available). Time is measured until a file is retrieved and successfully checked that it matches the uploaded content.
-
-Successful Attempt: script tries to download the data and verifies its integrity with sha256. If sha is not matched or a http timeout occours it retries (up to 15 times). cumulative time spent on all retrieval attempts is measured.
+What is a successful attempt: script tries to download the data and verifies its integrity with sha256. If sha is not matched or a http timeout occours (currently set to 1000s since we test 100Mb files max size) it retries (up to 15 times). cumulative time spent on all retrieval attempts is measured.
 
 SHA256 Hash Match: This verifies if the downloaded data matches the original data uploaded.
 
