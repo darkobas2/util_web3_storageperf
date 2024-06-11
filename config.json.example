@@ -3,11 +3,13 @@
     "127.0.0.1", "127.0.0.7"
   ],
   "http_servers": ["localhost"],
-  "ipfs_servers": ["ipfs.io", "w3s.link", "ipfs.eth.aragon.network"],
+  "swarm_gateway_servers": ["gateway-proxy-bee-2-0.gateway.ethswarm.org"],
+  "ipfs_gateway_servers": ["ipfs.io", "w3s.link", "ipfs.eth.aragon.network"],
   "ipfs_get_servers": ["127.0.0.1"],
   "username": "user",
   "prometheus_gw": "http://prometheus:9091",
   "prometheus_user": "user",
   "prometheus_pw": "secret",
-  "ipinfo_token": "secret"
+  "ipinfo_token": "secret",
+  "ipfs_data_dir": "/tmp"
 }

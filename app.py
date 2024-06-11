@@ -41,7 +41,7 @@ prometheus_client.REGISTRY.unregister(prometheus_client.PROCESS_COLLECTOR)
 
 # Load configuration from file or environment variables
 def load_config(config_file):
-    global ssh_servers, http_servers, ipfs_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token
+    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_gateway_servers
     with open(config_file, 'r') as f:
         config = json.load(f)
 
@@ -53,9 +53,13 @@ def load_config(config_file):
     if isinstance(http_servers, str):
         http_servers = http_servers.split(',')
 
-    ipfs_servers = os.getenv('IPFS_SERVERS', config['ipfs_servers'])
-    if isinstance(ipfs_servers, str):
-        ipfs_servers = ipfs_servers.split(',')
+    swarm_gateway_servers = os.getenv('SWARM_GATEWAY_SERVERS', config['swarm_gateway_servers'])
+    if isinstance(swarm_gateway_servers, str): 
+        swarm_gateway_servers = swarm_gateway_servers.split(',')
+
+    ipfs_gateway_servers = os.getenv('IPFS_GATEWAY_SERVERS', config['ipfs_gateway_servers'])
+    if isinstance(ipfs_gateway_servers, str):
+        ipfs_gateway_servers = ipfs_gateway_servers.split(',')
 
     ipfs_get_servers = os.getenv('IPFS_GET_SERVERS', config['ipfs_get_servers'])
     if isinstance(ipfs_get_servers, str):
@@ -67,6 +71,7 @@ def load_config(config_file):
 
     username = os.getenv('USERNAME', config['username'])
     ipinfo_token = os.getenv('IPINFO_TOKEN', config['ipinfo_token'])
+    ipfs_data_dir = os.getenv('IPFS_DATA_DIR', config['ipfs_data_dir'])
 
 def pgw_auth_handler(url, method, timeout, headers, data):
     global prometheus_user, prometheus_pw
@@ -306,7 +311,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     while attempts < max_attempts:
         attempts += 1
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3600)) as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
                 if port:
                     base_url_https = f'https://{ip}:{port}/bzz/{swarmhash}'
                     base_url_http = f'http://{ip}:{port}/bzz/{swarmhash}'
@@ -351,7 +356,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
     while attempts < max_attempts:
         attempts += 1
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=86400)) as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
                 async with session.get(f'https://{url}/ipfs/{cid}') as response:
                     content = await response.read()
                     elapsed_time = time.time() - initial_start_time
@@ -425,7 +430,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global ssh_servers, http_servers, ipfs_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label
+    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label, ipfs_data_dir, swarm_gateway_servers
     repeat_count = args.repeat
     continuous = args.continuous
     references_file = "references.json"
@@ -452,7 +457,7 @@ async def main(args):
                 logging.info(f'Upload to swarm duration: {upload_duration}')
                 
                 # Upload to IPFS using a temporary file
-                with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json') as tmpfile:
+                with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='w', suffix='.json') as tmpfile:
                     tmpfile.write(random_json)
                     tmpfile.flush()  # Ensure all data is written
                     ipfs_response = ipfs_api.http_client.add(tmpfile.name)
@@ -487,7 +492,7 @@ async def main(args):
                     http_tasks.append(task)
 
                 ipfs_tasks = []
-                for url in ipfs_servers:
+                for url in ipfs_gateway_servers:
                     task = http_ipfs(url, cid, sha256_hash)
                     ipfs_tasks.append(task)
 
@@ -558,18 +563,13 @@ async def main(args):
             for entry in swarm_entries:
                 swarmhash = entry["swarmhash"]
                 sha256_hash = entry["sha256"]
-                ssh_tasks = []
-                #for server, chosen_ips in server_user_ips.items():
-                #    for ip in chosen_ips:
-                #        task = ssh_curl(ip, swarmhash, server, username, sha256_hash)
-                #        ssh_tasks.append(task)
 
                 http_tasks = []
-                for url in http_servers:
+                for url in swarm_gateway_servers:
                     task = http_curl(url, swarmhash, sha256_hash)
                     http_tasks.append(task)
 
-                all_tasks = ssh_tasks + http_tasks
+                all_tasks = http_tasks
                 results = await asyncio.gather(*all_tasks, return_exceptions=True)
 
                 for result in results:
@@ -596,7 +596,7 @@ async def main(args):
                 cid = entry["cid"]
                 sha256_hash = entry["sha256"]
                 ipfs_tasks = []
-                for url in ipfs_servers:
+                for url in ipfs_gateway_servers:
                     task = http_ipfs(url, cid, sha256_hash)
                     ipfs_tasks.append(task)
 
