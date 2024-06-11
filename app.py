@@ -93,6 +93,11 @@ DL_TIME = Gauge('util_web3_storage_download_time',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
+DL_TIME_SUM = Summary('util_web3_storage_download_time_summary',
+                       'Time spent processing request',
+                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       registry=registry)
+
 DL_TIME_EXTREMES = Gauge('util_web3_storage_download_extremes',
                        'winners and loosers',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
@@ -103,7 +108,7 @@ REPEAT_DL_TIME = Gauge('util_web3_storage_repeat_download_time',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-REPEAT_DL_TIME_EXTREMES = Gauge('util_web3_storage_repeat_download_extremes',
+REPEAT_DL_TIME_SUM = Summary('util_web3_storage_repeat_download_summary',
                        'winners and loosers',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
@@ -113,7 +118,7 @@ OLD_DL_TIME = Gauge('util_web3_storage_old_download_time',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-OLD_DL_TIME_EXTREMES = Gauge('util_web3_storage_old_download_extremes',
+OLD_DL_TIME_SUM = Summary('util_web3_storage_old_download_summary',
                        'winners and loosers',
                        labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
                        registry=registry)
@@ -491,11 +496,13 @@ async def main(args):
 
                 fastest_time = float('inf')
                 fastest_server = None
+                fastest_storage = None
                 fastest_ip = None
                 fastest_attempts = 0
 
                 slowest_time = 0
                 slowest_server = None
+                slowest_storage = None
                 slowest_ip = None
                 slowest_attempts = 0
 
@@ -511,6 +518,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
+                            DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
@@ -519,12 +527,14 @@ async def main(args):
                         if elapsed_time < fastest_time:
                             fastest_time = elapsed_time
                             fastest_server = server
+                            fastest_storage = storage
                             fastest_ip = ip
                             fastest_attempts = attempts
 
                         if elapsed_time > slowest_time:
                             slowest_time = elapsed_time
                             slowest_server = server
+                            slowest_storage = storage
                             slowest_ip = ip
                             slowest_attempts = attempts
 
@@ -532,8 +542,8 @@ async def main(args):
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
-                DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
-                DL_TIME_EXTREMES.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
+                DL_TIME_EXTREMES.labels(storage=fastest_storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
+                DL_TIME_EXTREMES.labels(storage=slowest_storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
@@ -573,6 +583,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
@@ -602,6 +613,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
@@ -635,6 +647,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).ovbserve(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
@@ -665,6 +678,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).ovbserve(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
