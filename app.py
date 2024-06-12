@@ -342,7 +342,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
             logging.error(f"HTTP error on attempt {attempts}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, None, None, url, attempts, storage
+    return 0, None, server_loc, get_ip_from_dns(ip), url, attempts, storage
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
     global args
@@ -647,7 +647,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).ovbserve(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
@@ -678,7 +678,7 @@ async def main(args):
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
                             OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).ovbserve(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
                             OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
