@@ -68,3 +68,7 @@ Additionally, external tools such as `curl` and `jq` are used for specific tasks
 ```bash
 bash run.sh
 ```
+
+# Dashboard
+
+Dashboard can be viewed [here](https://grafana.swarm.datafund.io/public-dashboards/97e0e07b152b40379b0514b7f71589fe)
