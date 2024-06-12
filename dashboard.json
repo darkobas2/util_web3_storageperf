@@ -1,4 +1,4 @@
-                  {
+{
   "__inputs": [
     {
       "name": "DS_CORTEX",
@@ -1897,7 +1897,7 @@
       "type": "barchart"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1905,1772 +1905,1771 @@
         "y": 84
       },
       "id": 15,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 0,
-            "y": 2
-          },
-          "id": 20,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            }
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time{storage=~\"Ipfs\"}",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing Downloads IPFS",
-          "transformations": [
-            {
-              "id": "prepareTimeSeries",
-              "options": {
-                "format": "multi"
-              }
-            },
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "lastNotNull",
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "server": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "includeByName": {},
-                "indexByName": {},
-                "renameByName": {
-                  "Value (lastNotNull)": "Last",
-                  "Value (max)": "Max",
-                  "Value (mean)": "Mean",
-                  "Value (min)": "Min"
-                }
-              }
-            }
-          ],
-          "type": "histogram"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 2
-          },
-          "id": 21,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            }
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time{storage=~\"Swarm\"}",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing Downloads Swarm",
-          "transformations": [
-            {
-              "id": "prepareTimeSeries",
-              "options": {
-                "format": "multi"
-              }
-            },
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "lastNotNull",
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "server": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "includeByName": {},
-                "indexByName": {},
-                "renameByName": {
-                  "Value (lastNotNull)": "Last",
-                  "Value (max)": "Max",
-                  "Value (mean)": "Mean",
-                  "Value (min)": "Min"
-                }
-              }
-            }
-          ],
-          "type": "histogram"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisGridShow": true,
-                "axisLabel": "seconds",
-                "axisPlacement": "left",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "fieldMinMax": false,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 9
-          },
-          "id": 17,
-          "options": {
-            "barRadius": 0,
-            "barWidth": 0.97,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "right",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "always",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            },
-            "xField": "size\\storage",
-            "xTickLabelRotation": 0,
-            "xTickLabelSpacing": 100
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing data DL Mean time/size",
-          "transformations": [
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ]
-                  },
-                  "server": {
-                    "aggregations": []
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "groupingToMatrix",
-              "options": {
-                "columnField": "storage",
-                "emptyValue": "null",
-                "rowField": "size",
-                "valueField": "Value (mean)"
-              }
-            }
-          ],
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisGridShow": true,
-                "axisLabel": "seconds",
-                "axisPlacement": "left",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "fieldMinMax": false,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 24,
-            "x": 0,
-            "y": 18
-          },
-          "id": 18,
-          "options": {
-            "barRadius": 0,
-            "barWidth": 0.97,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "right",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "always",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            },
-            "xField": "size\\storage",
-            "xTickLabelRotation": 0,
-            "xTickLabelSpacing": 100
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing data DL Min time/size",
-          "transformations": [
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ]
-                  },
-                  "server": {
-                    "aggregations": []
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "groupingToMatrix",
-              "options": {
-                "columnField": "storage",
-                "emptyValue": "null",
-                "rowField": "size",
-                "valueField": "Value (min)"
-              }
-            }
-          ],
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisGridShow": true,
-                "axisLabel": "seconds",
-                "axisPlacement": "left",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "fieldMinMax": false,
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 25
-          },
-          "id": 19,
-          "options": {
-            "barRadius": 0,
-            "barWidth": 0.97,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "right",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "always",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            },
-            "xField": "size\\storage",
-            "xTickLabelRotation": 0,
-            "xTickLabelSpacing": 100
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing data DL Max time/size",
-          "transformations": [
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ]
-                  },
-                  "server": {
-                    "aggregations": []
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "groupingToMatrix",
-              "options": {
-                "columnField": "storage",
-                "emptyValue": "null",
-                "rowField": "size",
-                "valueField": "Value (max)"
-              }
-            }
-          ],
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "continuous-GrYlRd"
-              },
-              "custom": {
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "rgba(245, 54, 54, 0.9)",
-                    "value": null
-                  },
-                  {
-                    "color": "rgba(237, 129, 40, 0.89)",
-                    "value": 0
-                  },
-                  {
-                    "color": "rgba(50, 172, 45, 0.97)",
-                    "value": 10
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 12,
-            "w": 10,
-            "x": 0,
-            "y": 33
-          },
-          "id": 22,
-          "interval": "300",
-          "maxDataPoints": 2000,
-          "options": {
-            "basemap": {
-              "name": "Basemap",
-              "type": "default"
-            },
-            "controls": {
-              "mouseWheelZoom": true,
-              "showAttribution": true,
-              "showDebug": false,
-              "showMeasure": false,
-              "showScale": false,
-              "showZoom": true
-            },
-            "layers": [
-              {
-                "config": {
-                  "showLegend": true,
-                  "style": {
-                    "color": {
-                      "field": "Value (mean)",
-                      "fixed": "dark-green"
-                    },
-                    "opacity": 0.4,
-                    "rotation": {
-                      "fixed": 0,
-                      "max": 360,
-                      "min": -360,
-                      "mode": "mod"
-                    },
-                    "size": {
-                      "field": "Value (mean)",
-                      "fixed": 5,
-                      "max": 15,
-                      "min": 5
-                    },
-                    "symbol": {
-                      "fixed": "img/icons/marker/circle.svg",
-                      "mode": "fixed"
-                    },
-                    "symbolAlign": {
-                      "horizontal": "center",
-                      "vertical": "center"
-                    },
-                    "textConfig": {
-                      "fontSize": 12,
-                      "offsetX": 0,
-                      "offsetY": 0,
-                      "textAlign": "center",
-                      "textBaseline": "middle"
-                    }
-                  }
-                },
-                "location": {
-                  "latitude": "latitude",
-                  "longitude": "longitude",
-                  "mode": "auto"
-                },
-                "name": "Seconds",
-                "tooltip": true,
-                "type": "markers"
-              }
-            ],
-            "tooltip": {
-              "mode": "details"
-            },
-            "view": {
-              "allLayers": true,
-              "id": "zero",
-              "lat": 0,
-              "lon": 0,
-              "zoom": 1
-            }
-          },
-          "pluginVersion": "10.4.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "hide": false,
-              "includeNullMetadata": false,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing Downloads Times",
-          "transformations": [
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "lastNotNull",
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": []
-                  },
-                  "latitude": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "longitude": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "server": {
-                    "aggregations": [
-                      "uniqueValues"
-                    ],
-                    "operation": "groupby"
-                  },
-                  "size": {
-                    "aggregations": [
-                      "uniqueValues"
-                    ],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "convertFieldType",
-              "options": {
-                "conversions": [
-                  {
-                    "destinationType": "number",
-                    "targetField": "size"
-                  },
-                  {
-                    "destinationType": "number",
-                    "targetField": "latitude"
-                  },
-                  {
-                    "destinationType": "number",
-                    "targetField": "longitude"
-                  }
-                ],
-                "fields": {}
-              }
-            }
-          ],
-          "type": "geomap"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "filterable": true,
-                "inspect": true
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "storage"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 86
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "size"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 98
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "attempts"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 96
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "server"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 151
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (lastNotNull)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 133
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (min)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 132
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (max)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 144
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Last"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 77
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Min"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 73
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Max"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 66
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Mean"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 75
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 12,
-            "w": 14,
-            "x": 10,
-            "y": 33
-          },
-          "id": 23,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "Mean"
-              }
-            ]
-          },
-          "pluginVersion": "10.4.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing Downloads Times",
-          "transformations": [
-            {
-              "id": "prepareTimeSeries",
-              "options": {
-                "format": "multi"
-              }
-            },
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "lastNotNull",
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ]
-                  },
-                  "server": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "includeByName": {},
-                "indexByName": {},
-                "renameByName": {
-                  "Value (lastNotNull)": "Last",
-                  "Value (max)": "Max",
-                  "Value (mean)": "Mean",
-                  "Value (min)": "Min"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "filterable": true,
-                "inspect": true
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "storage"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 86
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "size"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 98
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "attempts"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 96
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "server"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 151
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (lastNotNull)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 133
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (min)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 132
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value (max)"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 144
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Last"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 77
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Min"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 73
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Max"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 66
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Mean"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 75
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 14,
-            "w": 11,
-            "x": 0,
-            "y": 45
-          },
-          "id": 24,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "size"
-              }
-            ]
-          },
-          "pluginVersion": "10.4.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "util_web3_storage_repeat_download_time",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Existing DL SHORT",
-          "transformations": [
-            {
-              "id": "prepareTimeSeries",
-              "options": {
-                "format": "multi"
-              }
-            },
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "format": "kvp",
-                "keepTime": false,
-                "replace": false,
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Time": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ]
-                  },
-                  "Value": {
-                    "aggregations": [
-                      "lastNotNull",
-                      "min",
-                      "max",
-                      "mean"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "attempts": {
-                    "aggregations": [
-                      "last"
-                    ]
-                  },
-                  "server": {
-                    "aggregations": []
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [
-                      "lastNotNull"
-                    ],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "includeByName": {},
-                "indexByName": {},
-                "renameByName": {
-                  "Value (lastNotNull)": "Last",
-                  "Value (max)": "Max",
-                  "Value (mean)": "Mean",
-                  "Value (min)": "Min"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 59
-          },
-          "id": 25,
-          "options": {
-            "barRadius": 0,
-            "barWidth": 0.97,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "right",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "never",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            },
-            "xTickLabelRotation": 0,
-            "xTickLabelSpacing": 0
-          },
-          "pluginVersion": "10.4.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_CORTEX}"
-              },
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "increase(util_web3_storage_repeat_sha_fail_total[$__rate_interval])",
-              "fullMetaSearch": false,
-              "includeNullMetadata": false,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A",
-              "useBackend": false
-            }
-          ],
-          "title": "Count SHA mismatches (Failed Download)",
-          "transformations": [
-            {
-              "id": "seriesToRows",
-              "options": {}
-            },
-            {
-              "id": "extractFields",
-              "options": {
-                "source": "Metric"
-              }
-            },
-            {
-              "id": "convertFieldType",
-              "options": {
-                "conversions": [
-                  {
-                    "destinationType": "number",
-                    "targetField": "size"
-                  },
-                  {}
-                ],
-                "fields": {}
-              }
-            },
-            {
-              "id": "groupBy",
-              "options": {
-                "fields": {
-                  "Value": {
-                    "aggregations": [
-                      "sum"
-                    ],
-                    "operation": "aggregate"
-                  },
-                  "size": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  },
-                  "storage": {
-                    "aggregations": [],
-                    "operation": "groupby"
-                  }
-                }
-              }
-            },
-            {
-              "id": "groupingToMatrix",
-              "options": {
-                "columnField": "storage",
-                "emptyValue": "null",
-                "rowField": "size",
-                "valueField": "Value (sum)"
-              }
-            }
-          ],
-          "type": "barchart"
-        }
-      ],
+      "panels": [],
       "title": "Gateway metrics",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 85
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time{storage=~\"Ipfs\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing Downloads IPFS",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull",
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "server": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value (lastNotNull)": "Last",
+              "Value (max)": "Max",
+              "Value (mean)": "Mean",
+              "Value (min)": "Min"
+            }
+          }
+        }
+      ],
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 85
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time{storage=~\"Swarm\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing Downloads Swarm",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull",
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "server": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value (lastNotNull)": "Last",
+              "Value (max)": "Max",
+              "Value (mean)": "Mean",
+              "Value (min)": "Min"
+            }
+          }
+        }
+      ],
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "seconds",
+            "axisPlacement": "left",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      },
+      "id": 17,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "size\\storage",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing data DL Mean time/size",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "server": {
+                "aggregations": []
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "storage",
+            "emptyValue": "null",
+            "rowField": "size",
+            "valueField": "Value (mean)"
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "seconds",
+            "axisPlacement": "left",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 101
+      },
+      "id": 18,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "size\\storage",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing data DL Min time/size",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "server": {
+                "aggregations": []
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "storage",
+            "emptyValue": "null",
+            "rowField": "size",
+            "valueField": "Value (min)"
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "seconds",
+            "axisPlacement": "left",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "id": 19,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "size\\storage",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "10.4.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing data DL Max time/size",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "server": {
+                "aggregations": []
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "storage",
+            "emptyValue": "null",
+            "rowField": "size",
+            "valueField": "Value (max)"
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "rgba(245, 54, 54, 0.9)",
+                "value": null
+              },
+              {
+                "color": "rgba(237, 129, 40, 0.89)",
+                "value": 0
+              },
+              {
+                "color": "rgba(50, 172, 45, 0.97)",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 10,
+        "x": 0,
+        "y": 116
+      },
+      "id": 22,
+      "interval": "300",
+      "maxDataPoints": 2000,
+      "options": {
+        "basemap": {
+          "name": "Basemap",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "Value (mean)",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.4,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "field": "Value (mean)",
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 5
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "latitude": "latitude",
+              "longitude": "longitude",
+              "mode": "auto"
+            },
+            "name": "Seconds",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "zero",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 1
+        }
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing Downloads Times",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull",
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": []
+              },
+              "latitude": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "longitude": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "server": {
+                "aggregations": [
+                  "uniqueValues"
+                ],
+                "operation": "groupby"
+              },
+              "size": {
+                "aggregations": [
+                  "uniqueValues"
+                ],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "size"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "latitude"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "longitude"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "storage"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 86
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "size"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 98
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "attempts"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 96
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "server"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 151
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 133
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 132
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (max)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 144
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 77
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Min"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 73
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Max"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 66
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 14,
+        "x": 10,
+        "y": 116
+      },
+      "id": 23,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Max"
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing Downloads Times",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull",
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "server": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value (lastNotNull)": "Last",
+              "Value (max)": "Max",
+              "Value (mean)": "Mean",
+              "Value (min)": "Min"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "storage"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 86
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "size"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 98
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "attempts"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 96
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "server"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 151
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 133
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 132
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (max)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 144
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 77
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Min"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 73
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Max"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 66
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 75
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 11,
+        "x": 0,
+        "y": 128
+      },
+      "id": 24,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "size"
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "util_web3_storage_repeat_download_time",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Existing DL SHORT",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "kvp",
+            "keepTime": false,
+            "replace": false,
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Time": {
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull",
+                  "min",
+                  "max",
+                  "mean"
+                ],
+                "operation": "aggregate"
+              },
+              "attempts": {
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "server": {
+                "aggregations": []
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value (lastNotNull)": "Last",
+              "Value (max)": "Max",
+              "Value (mean)": "Mean",
+              "Value (min)": "Min"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_CORTEX}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 142
+      },
+      "id": 25,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_CORTEX}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "increase(util_web3_storage_repeat_sha_fail_total[$__rate_interval])",
+          "fullMetaSearch": false,
+          "includeNullMetadata": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Count SHA mismatches (Failed Download)",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Metric"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "size"
+              },
+              {}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Value": {
+                "aggregations": [
+                  "sum"
+                ],
+                "operation": "aggregate"
+              },
+              "size": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "storage": {
+                "aggregations": [],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "storage",
+            "emptyValue": "null",
+            "rowField": "size",
+            "valueField": "Value (sum)"
+          }
+        }
+      ],
+      "type": "barchart"
     },
     {
       "collapsed": false,
@@ -3678,7 +3677,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 85
+        "y": 150
       },
       "id": 26,
       "panels": [],
@@ -3694,7 +3693,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 151
       },
       "id": 28,
       "options": {
@@ -3753,7 +3752,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 91
+        "y": 156
       },
       "id": 27,
       "options": {
@@ -3924,7 +3923,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 91
+        "y": 156
       },
       "id": 29,
       "options": {
@@ -4090,7 +4089,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 98
+        "y": 163
       },
       "id": 30,
       "options": {
@@ -4280,7 +4279,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 110
+        "y": 175
       },
       "id": 31,
       "options": {
@@ -4463,7 +4462,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 117
+        "y": 182
       },
       "id": 32,
       "options": {
@@ -4615,7 +4614,7 @@
         "h": 17,
         "w": 12,
         "x": 0,
-        "y": 125
+        "y": 190
       },
       "id": 33,
       "interval": "300",
@@ -4988,7 +4987,7 @@
         "h": 17,
         "w": 12,
         "x": 12,
-        "y": 125
+        "y": 190
       },
       "id": 34,
       "options": {
@@ -5271,7 +5270,7 @@
         "h": 12,
         "w": 12,
         "x": 0,
-        "y": 142
+        "y": 207
       },
       "id": 35,
       "options": {
@@ -5287,8 +5286,8 @@
         "showHeader": true,
         "sortBy": [
           {
-            "desc": false,
-            "displayName": "size"
+            "desc": true,
+            "displayName": "Value (stdDev)"
           }
         ]
       },
@@ -5346,7 +5345,8 @@
                   "lastNotNull",
                   "min",
                   "max",
-                  "mean"
+                  "mean",
+                  "stdDev"
                 ],
                 "operation": "aggregate"
               },
@@ -5441,7 +5441,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 154
+        "y": 219
       },
       "id": 36,
       "options": {
@@ -5474,7 +5474,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "increase(util_web3_storage_old_sha_fail_total[$__rate_interval])",
+          "expr": "count by(size, storage) (util_web3_storage_old_sha_fail_total)",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "instant": false,
@@ -5497,15 +5497,13 @@
           }
         },
         {
-          "disabled": true,
           "id": "convertFieldType",
           "options": {
             "conversions": [
               {
                 "destinationType": "number",
                 "targetField": "size"
-              },
-              {}
+              }
             ],
             "fields": {}
           }
@@ -5515,7 +5513,8 @@
           "options": {
             "fields": {
               "Time": {
-                "aggregations": []
+                "aggregations": [],
+                "operation": "groupby"
               },
               "Value": {
                 "aggregations": [
@@ -5547,1620 +5546,10 @@
       "type": "barchart"
     }
   ],
-  "refresh": "",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
-  },
-  "time": {
-    "from": "now-24h",
-    "to": "now"
-  },
-  "timepicker": {
-    "refresh_intervals": [
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ]
-  },
-  "timezone": "browser",
-  "title": "DarkoWeb3StorgePerf",
-  "uid": "ddmv2b5855i4gc",
-  "version": 56,
-  "weekStart": ""
-}"min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "field": "Value (mean)",
-                  "fixed": 5,
-                  "max": 15,
-                  "min": 5
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "symbolAlign": {
-                  "horizontal": "center",
-                  "vertical": "center"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "latitude": "latitude",
-              "longitude": "longitude",
-              "mode": "auto"
-            },
-            "name": "Seconds",
-            "tooltip": true,
-            "type": "markers"
-          }
-        ],
-        "tooltip": {
-          "mode": "details"
-        },
-        "view": {
-          "allLayers": true,
-          "id": "zero",
-          "lat": 0,
-          "lon": 0,
-          "zoom": 1
-        }
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_time{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Distribution Times",
-      "transformations": [
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": []
-              },
-              "latitude": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "longitude": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "server": {
-                "aggregations": [
-                  "uniqueValues"
-                ],
-                "operation": "groupby"
-              },
-              "size": {
-                "aggregations": [
-                  "uniqueValues"
-                ],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "size"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "latitude"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "longitude"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "geomap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_CORTEX}"
-      },
-      "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "storage"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "size"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 98
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "attempts"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 96
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "server"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 151
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (lastNotNull)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 133
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (min)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 132
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (max)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 144
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 77
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Min"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 73
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Max"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 66
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Mean"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 75
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 17,
-        "w": 12,
-        "x": 12,
-        "y": 38
-      },
-      "id": 1,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Mean"
-          }
-        ]
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_time{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Distribution Times",
-      "transformations": [
-        {
-          "id": "prepareTimeSeries",
-          "options": {
-            "format": "multi"
-          }
-        },
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": [
-                  "last"
-                ]
-              },
-              "server": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "size": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [
-                  "lastNotNull"
-                ],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value (lastNotNull)": "Last",
-              "Value (max)": "Max",
-              "Value (mean)": "Mean",
-              "Value (min)": "Min"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_CORTEX}"
-      },
-      "description": "After data was first downloaded (distribution time graph) Retry the download on the same node",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 0
-              },
-              {
-                "color": "rgba(50, 172, 45, 0.97)",
-                "value": 10
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 17,
-        "w": 12,
-        "x": 0,
-        "y": 55
-      },
-      "id": 5,
-      "interval": "300",
-      "maxDataPoints": 2000,
-      "options": {
-        "basemap": {
-          "name": "Basemap",
-          "type": "default"
-        },
-        "controls": {
-          "mouseWheelZoom": true,
-          "showAttribution": true,
-          "showDebug": false,
-          "showMeasure": false,
-          "showScale": false,
-          "showZoom": true
-        },
-        "layers": [
-          {
-            "config": {
-              "showLegend": true,
-              "style": {
-                "color": {
-                  "field": "Value (mean)",
-                  "fixed": "dark-green"
-                },
-                "opacity": 0.4,
-                "rotation": {
-                  "fixed": 0,
-                  "max": 360,
-                  "min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "field": "Value (mean)",
-                  "fixed": 5,
-                  "max": 15,
-                  "min": 5
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "symbolAlign": {
-                  "horizontal": "center",
-                  "vertical": "center"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "latitude": "latitude",
-              "longitude": "longitude",
-              "mode": "auto"
-            },
-            "name": "Seconds",
-            "tooltip": true,
-            "type": "markers"
-          }
-        ],
-        "tooltip": {
-          "mode": "details"
-        },
-        "view": {
-          "allLayers": true,
-          "id": "zero",
-          "lat": 0,
-          "lon": 0,
-          "zoom": 1
-        }
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_secondary{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Second Download",
-      "transformations": [
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": []
-              },
-              "latitude": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "longitude": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "server": {
-                "aggregations": [
-                  "uniqueValues"
-                ],
-                "operation": "groupby"
-              },
-              "size": {
-                "aggregations": [
-                  "uniqueValues"
-                ],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "size"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "latitude"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "longitude"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "geomap"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_CORTEX}"
-      },
-      "description": "After data was first downloaded (distribution time graph) Retry the download on the same node",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "storage"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "size"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 98
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "attempts"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 96
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "server"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 151
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (lastNotNull)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 133
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (min)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 132
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (max)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 144
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 77
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Min"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 73
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Max"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 66
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Mean"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 75
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 17,
-        "w": 12,
-        "x": 12,
-        "y": 55
-      },
-      "id": 6,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Mean"
-          }
-        ]
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_secondary{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Second Download",
-      "transformations": [
-        {
-          "id": "prepareTimeSeries",
-          "options": {
-            "format": "multi"
-          }
-        },
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": [
-                  "last"
-                ]
-              },
-              "server": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "size": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [
-                  "lastNotNull"
-                ],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value (lastNotNull)": "Last",
-              "Value (max)": "Max",
-              "Value (mean)": "Mean",
-              "Value (min)": "Min"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_CORTEX}"
-      },
-      "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "storage"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "size"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 98
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "attempts"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 96
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "server"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 151
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (lastNotNull)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 133
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (min)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 132
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (max)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 144
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 77
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Min"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 73
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Max"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 66
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Mean"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 75
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 12,
-        "x": 0,
-        "y": 72
-      },
-      "id": 9,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "size"
-          }
-        ]
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_time{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Distribution Times SHORT",
-      "transformations": [
-        {
-          "id": "prepareTimeSeries",
-          "options": {
-            "format": "multi"
-          }
-        },
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": [
-                  "last"
-                ]
-              },
-              "server": {
-                "aggregations": []
-              },
-              "size": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [
-                  "lastNotNull"
-                ],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value (lastNotNull)": "Last",
-              "Value (max)": "Max",
-              "Value (mean)": "Mean",
-              "Value (min)": "Min"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_CORTEX}"
-      },
-      "description": "After data was first downloaded (distribution time graph) Retry the download on the same node",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": true
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "storage"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "size"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 98
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "attempts"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 96
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "server"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 151
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (lastNotNull)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 133
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (min)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 132
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value (max)"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 144
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Last"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 77
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Min"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 73
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Max"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 66
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Mean"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 75
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 12,
-        "x": 12,
-        "y": 72
-      },
-      "id": 10,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "size"
-          }
-        ]
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_CORTEX}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "util_web3_storage_download_secondary{storage=~\"$storage\", size=~\"$size\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Second Download SHORT",
-      "transformations": [
-        {
-          "id": "prepareTimeSeries",
-          "options": {
-            "format": "multi"
-          }
-        },
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "kvp",
-            "keepTime": false,
-            "replace": false,
-            "source": "Metric"
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Time": {
-                "aggregations": [
-                  "lastNotNull"
-                ]
-              },
-              "Value": {
-                "aggregations": [
-                  "lastNotNull",
-                  "min",
-                  "max",
-                  "mean"
-                ],
-                "operation": "aggregate"
-              },
-              "attempts": {
-                "aggregations": [
-                  "last"
-                ]
-              },
-              "server": {
-                "aggregations": []
-              },
-              "size": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "storage": {
-                "aggregations": [
-                  "lastNotNull"
-                ],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value (lastNotNull)": "Last",
-              "Value (max)": "Max",
-              "Value (mean)": "Mean",
-              "Value (min)": "Min",
-              "storage": ""
-            }
-          }
-        }
-      ],
-      "type": "table"
-    }
-  ],
-  "schemaVersion": 39,
-  "tags": [],
-  "templating": {
-    "list": [
-      {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${DS_CORTEX}"
-        },
-        "definition": "label_values(util_web3_storage_download_time,storage)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "storage",
-        "multi": true,
-        "name": "storage",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(util_web3_storage_download_time,storage)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${DS_CORTEX}"
-        },
-        "definition": "label_values(util_web3_storage_download_time,size)",
-        "description": "size of uploaded data in kilobytes",
-        "hide": 0,
-        "includeAll": true,
-        "multi": true,
-        "name": "size",
-        "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(util_web3_storage_download_time,size)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      }
-    ]
   },
   "time": {
     "from": "now-2d",
@@ -7179,6 +5568,6 @@
   "timezone": "browser",
   "title": "DarkoWeb3StorgePerf",
   "uid": "ddmv2b5855i4gc",
-  "version": 38,
+  "version": 58,
   "weekStart": ""
 }
