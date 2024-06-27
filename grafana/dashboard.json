@@ -1,59 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_CORTEX",
-      "label": "cortex",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "barchart",
-      "name": "Bar chart",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "geomap",
-      "name": "Geomap",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "10.4.3"
-    },
-    {
-      "type": "panel",
-      "id": "histogram",
-      "name": "Histogram",
-      "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "text",
-      "name": "Text",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -73,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -92,7 +37,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "gridPos": {
         "h": 6,
@@ -117,7 +62,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
       "fieldConfig": {
@@ -173,7 +118,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -270,7 +215,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
       "fieldConfig": {
@@ -327,7 +272,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -424,7 +369,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -507,7 +452,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -596,7 +541,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -679,7 +624,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -768,7 +713,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -804,8 +749,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -851,7 +795,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -940,7 +884,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -960,8 +904,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
+                "color": "rgba(245, 54, 54, 0.9)"
               },
               {
                 "color": "rgba(237, 129, 40, 0.89)",
@@ -1063,7 +1006,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1167,7 +1110,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -1185,8 +1128,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1361,7 +1303,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1456,7 +1398,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -1474,8 +1416,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1650,7 +1591,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1744,7 +1685,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1777,8 +1718,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1823,7 +1763,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -1912,7 +1852,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
       "fieldConfig": {
@@ -1935,8 +1875,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1968,7 +1907,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2065,7 +2004,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
       "fieldConfig": {
@@ -2088,8 +2027,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2121,7 +2059,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2218,7 +2156,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -2254,8 +2192,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2301,7 +2238,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2384,7 +2321,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -2420,8 +2357,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2467,7 +2403,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2550,7 +2486,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -2586,8 +2522,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2633,7 +2568,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2716,7 +2651,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -2736,8 +2671,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
+                "color": "rgba(245, 54, 54, 0.9)"
               },
               {
                 "color": "rgba(237, 129, 40, 0.89)",
@@ -2839,7 +2773,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -2943,7 +2877,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -2961,8 +2895,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3137,7 +3070,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3232,7 +3165,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -3250,8 +3183,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3426,7 +3358,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3520,7 +3452,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "fieldConfig": {
         "defaults": {
@@ -3553,8 +3485,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3599,7 +3530,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3687,7 +3618,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "gridPos": {
         "h": 5,
@@ -3712,7 +3643,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "y - number of concluded tests\nx - time those tests were concluded in\nWe are filtering out all values above 1000 seconds!!!",
       "fieldConfig": {
@@ -3735,8 +3666,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3768,7 +3698,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -3883,7 +3813,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "Time it takes from when data was uploaded to when it was first downloaded. ie. distribution time\ny - number of concluded tests\nx - time those tests were concluded in",
       "fieldConfig": {
@@ -3906,8 +3836,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3939,7 +3868,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -4036,7 +3965,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nx axis is grouped by tested data in kilobytes and storage\nWe are filtering out all values above 1000 seconds!!!",
       "fieldConfig": {
@@ -4072,8 +4001,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4119,7 +4047,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -4226,7 +4154,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nWe are filtering out all values above 1000 seconds!!!\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -4262,8 +4190,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4309,7 +4236,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -4409,7 +4336,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "compare mean times\ny axis is time in seconds\nWe are filtering out all values above 1000 seconds!!!\nx axis is grouped by tested data in kilobytes and storage",
       "fieldConfig": {
@@ -4445,8 +4372,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -4492,7 +4418,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -4574,7 +4500,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -4594,8 +4520,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "rgba(245, 54, 54, 0.9)",
-                "value": null
+                "color": "rgba(245, 54, 54, 0.9)"
               },
               {
                 "color": "rgba(237, 129, 40, 0.89)",
@@ -4697,7 +4622,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -4819,7 +4744,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -4837,8 +4762,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -5013,7 +4937,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -5102,7 +5026,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "description": "How long it takes after the data was uploaded that it can be discovered and downloaded from a random node",
       "fieldConfig": {
@@ -5120,8 +5044,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -5296,7 +5219,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -5391,7 +5314,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_CORTEX}"
+        "uid": "${DS_MIMIR}"
       },
       "fieldConfig": {
         "defaults": {
@@ -5424,8 +5347,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -5470,7 +5392,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_CORTEX}"
+            "uid": "${DS_MIMIR}"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -5549,7 +5471,26 @@
   "schemaVersion": 39,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "mimir",
+          "value": "P46B05499459EE360"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "mimir",
+        "multi": false,
+        "name": "DS_MIMIR",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
   },
   "time": {
     "from": "now-2d",
@@ -5568,6 +5509,6 @@
   "timezone": "browser",
   "title": "DarkoWeb3StorgePerf",
   "uid": "ddmv2b5855i4gc",
-  "version": 58,
+  "version": 1,
   "weekStart": ""
 }

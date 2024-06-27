@@ -1,0 +1,90 @@
+version: '3'
+services:
+  bee:
+    image: ethersphere/bee:stable
+    restart: unless-stopped
+    ports:
+      - 11633:1633
+      - 11634:1634
+    volumes:
+      - bee:/home/bee/.bee
+    command: start --swap-enable=false --full-node=false --blockchain-rpc-endpoint="" --password=beeget
+
+  ipfs:
+    image: ipfs/kubo:latest
+    restart: unless-stopped
+    ports:
+      - 18080:8080
+      - 14001:4001
+      - 14001:4001/udp
+      - 15001:5001
+    volumes:
+      - ipfs_staging:/export
+      - ipfs_data:/data/ipfs
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    ports:
+      - '13000:3000'
+    hostname: grafana
+    user: root
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_SERVER_PROTOCOL: "http"
+      GF_INSTALL_PLUGINS: "grafana-worldmap-panel"
+      GF_CACHING_ENABLED: "true"
+      GF_CACHING_BACKEND: "memory"
+      GF_DATAPROXY_TIMEOUT: 300
+    depends_on:
+      - postgres
+    volumes:
+      - grafana:/var/lib/grafana
+      - ./grafana/graf_datasources.yml:/etc/grafana/provisioning/datasources/graf_datasources.yaml
+      - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/main.json
+    env_file:
+      - ./env
+    restart: always
+
+  mimir:
+    image: grafana/mimir:latest
+    volumes:
+      - mimir:/tmp/mimir
+      - ./mimir.yaml:/etc/mimir/mimir.yaml
+    command:
+      - --config.file=/etc/mimir/mimir.yaml 
+    ports:
+      - "19009:9009"
+    restart: always
+
+  postgres:
+    container_name: postgres
+    image: postgres:16
+    volumes:
+      - postgres:/var/lib/postgresql/15/data
+    env_file:
+      - ./env
+    restart: always
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "19091:9091"
+    command: --web.enable-admin-api  --web.config.file="/web-config.yml"
+
+  agent:
+    image: grafana/agent:latest
+    volumes:
+      - ./agent.yaml:/agent.yaml
+    command: -config.file=/agent.yaml
+    ports:
+      - "12345:12345"
+    restart: unless-stopped
+
+volumes:
+  bee:
+  ipfs_staging:
+  ipfs_data:
+  grafana:
+  postgres:
+  mimir:
