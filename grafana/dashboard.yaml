@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: "DarkobasWeb3StoragePerf"
+    orgId: 1
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 300
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

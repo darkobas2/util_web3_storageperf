@@ -41,7 +41,7 @@ prometheus_client.REGISTRY.unregister(prometheus_client.PROCESS_COLLECTOR)
 
 # Load configuration from file or environment variables
 def load_config(config_file):
-    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_gateway_servers
+    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_gateway_servers, ipfs_upload_server, ipfs_dl_servers
     with open(config_file, 'r') as f:
         config = json.load(f)
 
@@ -65,6 +65,10 @@ def load_config(config_file):
     if isinstance(ipfs_get_servers, str):
         ipfs_get_servers = ipfs_get_servers.split(',')
 
+    ipfs_dl_servers = os.getenv('IPFS_DL_SERVERS', config['ipfs_dl_servers'])
+    if isinstance(ipfs_dl_servers, str):
+        ipfs_dl_servers = ipfs_dl_servers.split(',')
+
     prometheus_gw = os.getenv('PROMETHEUS_GW', config['prometheus_gw'])
     prometheus_pw = os.getenv('PROMETHEUS_PW', config['prometheus_pw'])
     prometheus_user = os.getenv('PROMETHEUS_USER', config['prometheus_user'])
@@ -72,6 +76,7 @@ def load_config(config_file):
     username = os.getenv('USERNAME', config['username'])
     ipinfo_token = os.getenv('IPINFO_TOKEN', config['ipinfo_token'])
     ipfs_data_dir = os.getenv('IPFS_DATA_DIR', config['ipfs_data_dir'])
+    ipfs_upload_server = os.getenv('IPFS_UPLOAD_SERVER', config['ipfs_upload_server'])
 
 def pgw_auth_handler(url, method, timeout, headers, data):
     global prometheus_user, prometheus_pw
@@ -176,14 +181,19 @@ def get_ip_from_dns(dns_name):
     This function attempts to resolve a DNS name and return the IP address.
 
     Args:
-        dns_name: The DNS name to resolve, which may include a port.
+        dns_name: The DNS name to resolve, which may include a protocol (http/https), a port, or neither.
 
     Returns:
         The IP address of the DNS name if successful, otherwise None.
     """
+
+    # Remove protocol (http/https) if present
+    if dns_name.startswith("http://") or dns_name.startswith("https://"):
+        dns_name = dns_name[len("https://"):] if dns_name.startswith("https://") else dns_name[len("http://"):]
+
     # Split the input to separate the IP/DNS and port if present
     if ':' in dns_name:
-        host, _ = dns_name.rsplit(':', 1)
+        host, _ = dns_name.rsplit(':', 1)  # Take only the last colon
     else:
         host = dns_name
 
@@ -212,7 +222,7 @@ async def kill_existing_processes(server, username, output_file):
             kill_command = f"kill -9 {pid}"
             await conn.run(kill_command)
 
-async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
+async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=10):
     global args
     storage = 'Ipfs'
     attempts = 0
@@ -265,7 +275,7 @@ async def ipfs_get(ip, cid, server, username, expected_sha256, max_attempts=15):
 
     return 0, None, server_loc, server, ip, attempts, storage
 
-async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=15):
+async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempts=10):
     global args
     storage = 'Swarm'
     attempts = 0
@@ -292,17 +302,21 @@ async def ssh_curl(ip, swarmhash, server, username, expected_sha256, max_attempt
     total_elapsed_time = time.time() - initial_start_time
     return 0, None, server_loc, server, ip, attempts, storage
 
-async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
-    global args
-    storage = 'Swarm'
-    attempts = 0
-
+def extract_port(url):
     # Extract IP address and port if present
     if ':' in url:
         ip, port = url.split(':')
     else:
         ip = url
         port = None
+    return ip,port
+
+async def http_curl(url, swarmhash, expected_sha256, max_attempts=10):
+    global args
+    storage = 'Swarm'
+    attempts = 0
+
+    ip, port = extract_port(url)
 
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
     server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
@@ -344,7 +358,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts=15):
     total_elapsed_time = time.time() - initial_start_time
     return 0, None, server_loc, get_ip_from_dns(ip), url, attempts, storage
 
-async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
+async def http_ipfs(url, cid, expected_sha256, max_attempts=10):
     global args
     storage = 'Ipfs'
     attempts = 0
@@ -357,7 +371,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts=15):
         attempts += 1
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
-                async with session.get(f'https://{url}/ipfs/{cid}') as response:
+                async with session.get(f'{url}/ipfs/{cid}') as response:
                     content = await response.read()
                     elapsed_time = time.time() - initial_start_time
                     sha256sum_output = hashlib.sha256(content).hexdigest()
@@ -430,7 +444,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label, ipfs_data_dir, swarm_gateway_servers
+    global ssh_servers, http_servers, ipfs_gateway_servers, ipfs_get_servers, username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, job_label, ipfs_data_dir, swarm_gateway_servers, ipfs_upload_server, ipfs_dl_servers
     repeat_count = args.repeat
     continuous = args.continuous
     references_file = "references.json"
@@ -456,14 +470,22 @@ async def main(args):
                 upload_duration = time.time() - start_upload_time
                 logging.info(f'Upload to swarm duration: {upload_duration}')
                 
+                ipfs_api_server, ipfs_api_port = extract_port(ipfs_upload_server)
+                ipfs_api_url = f'http://{ipfs_api_server}:5001/api/v0/add'
+
                 # Upload to IPFS using a temporary file
                 with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='w', suffix='.json') as tmpfile:
                     tmpfile.write(random_json)
                     tmpfile.flush()  # Ensure all data is written
-                    ipfs_response = ipfs_api.http_client.add(tmpfile.name)
-                    ipfs_hash = ipfs_response['Hash']
-                    ipfs_file_name = ipfs_response['Name']
-                    cid = ipfs_hash + '?filename=' + ipfs_file_name
+
+                    with open(tmpfile.name, 'rb') as f:
+                        files = {'file': f}
+                        ipfs_response = requests.post(ipfs_api_url, files=files)
+                        
+                    ipfs_response_json = ipfs_response.json()
+                    ipfs_hash = ipfs_response_json['Hash']
+                    ipfs_file_name = ipfs_response_json['Name']
+                    cid = f"{ipfs_hash}?filename={ipfs_file_name}"
                     logging.info(f'Successfully uploaded file to IPFS. cid: {cid}')
                     references.setdefault("ipfs", {}).setdefault(str(args.size), []).append({"cid": cid, "sha256": sha256_hash})
 
@@ -665,7 +687,14 @@ async def main(args):
                     task = ipfs_get(ip, cid, ip, username, sha256_hash)
                     ipfs_get_tasks.append(task)
 
-                results = await asyncio.gather(*ipfs_get_tasks, return_exceptions=True)
+                ipfs_dl_tasks = []
+                for url in ipfs_dl_servers:
+                    task = http_ipfs(url, cid, sha256_hash)
+                    ipfs_dl_tasks.append(task)
+
+                all_tasks = ipfs_get_tasks + ipfs_dl_tasks
+
+                results = await asyncio.gather(*all_tasks, return_exceptions=True)
 
                 for result in results:
                     if isinstance(result, Exception):

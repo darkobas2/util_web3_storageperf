@@ -1,13 +1,14 @@
 {
   "ssh_servers": [
-    "127.0.0.1", "127.0.0.7"
   ],
-  "http_servers": ["localhost"],
-  "swarm_gateway_servers": ["gateway-proxy-bee-2-0.gateway.ethswarm.org"],
-  "ipfs_gateway_servers": ["ipfs.io", "w3s.link", "ipfs.eth.aragon.network"],
-  "ipfs_get_servers": ["127.0.0.1"],
+  "http_servers": ["localhost:1633"],
+  "swarm_gateway_servers": ["gateway-proxy-bee-2-0.gateway.ethswarm.org", "bee-1.dev.fairdatasociety.org"],
+  "ipfs_gateway_servers": ["https://ipfs.io", "https://w3s.link", "https://ipfs.eth.aragon.network", "http://localhost:8080],
+  "ipfs_get_servers": [],
+  "ipfs_dl_servers": ["localhost:8080"],
+  "ipfs_upload_server": "localhost:5001",
   "username": "user",
-  "prometheus_gw": "http://prometheus:9091",
+  "prometheus_gw": "http://localhost:9091",
   "prometheus_user": "user",
   "prometheus_pw": "secret",
   "ipinfo_token": "secret",
