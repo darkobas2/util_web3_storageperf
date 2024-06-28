@@ -12,5 +12,7 @@
   "prometheus_user": "user",
   "prometheus_pw": "secret",
   "ipinfo_token": "secret",
-  "ipfs_data_dir": "/tmp"
+  "ipfs_data_dir": "/tmp",
+  "arw_api_server": "https://arweave.net",
+  "arw_gateway_servers": ["https://arweave.net", "https://permagate.io", "https://vilenarios.com", "https://ar.owlstake.com"]
 }
