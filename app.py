@@ -91,53 +91,86 @@ def pgw_auth_handler(url, method, timeout, headers, data):
 
 registry = CollectorRegistry()
 NO_MATCH = Counter('util_web3_storage_sha_fail',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       'failed to download a file that would match',
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 REPEAT_NO_MATCH = Counter('util_web3_storage_repeat_sha_fail',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       'failed to download a file that would match',
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 OLD_NO_MATCH = Counter('util_web3_storage_old_sha_fail',
-                       'failed to download a file that would match in 15 attempts',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       'failed to download a file that would match',
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 DL_TIME = Gauge('util_web3_storage_download_time',
                        'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-DL_TIME_SUM = Summary('util_web3_storage_download_time_summary',
+DL_TIME_SUM = Histogram('util_web3_storage_download_time_summary',
                        'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
+                       buckets=[
+                           0,
+                           1,
+                           10,
+                           30,
+                           60,
+                           300,
+                           600,
+                           1000,
+                           float('inf')  # Infinity for the last bucket
+                       ],
                        registry=registry)
 
 DL_TIME_EXTREMES = Gauge('util_web3_storage_download_extremes',
                        'winners and loosers',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
 REPEAT_DL_TIME = Gauge('util_web3_storage_repeat_download_time',
                        'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-REPEAT_DL_TIME_SUM = Summary('util_web3_storage_repeat_download_summary',
+REPEAT_DL_TIME_SUM = Histogram('util_web3_storage_repeat_download_summary',
                        'winners and loosers',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
+                       buckets=[
+                           0, 
+                           1, 
+                           10,
+                           30,
+                           60,
+                           300, 
+                           600,
+                           1000,
+                           float('inf')  # Infinity for the last bucket
+                       ],
                        registry=registry)
 
 OLD_DL_TIME = Gauge('util_web3_storage_old_download_time',
                        'Time spent processing request',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-OLD_DL_TIME_SUM = Summary('util_web3_storage_old_download_summary',
+OLD_DL_TIME_SUM = Histogram('util_web3_storage_old_download_summary',
                        'winners and loosers',
-                       labelnames=['storage', 'server', 'attempts', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
+                       buckets=[
+                           0, 
+                           1, 
+                           10,
+                           30,
+                           60,
+                           300, 
+                           600,
+                           1000,
+                           float('inf')  # Infinity for the last bucket
+                       ],
                        registry=registry)
 
 def signal_handler(sig, frame):
@@ -428,7 +461,7 @@ def upload_file(data, url):
     headers = {
         "Content-Type": "application/json"
     }
-    response = requests.post(url, data=data, headers=headers)
+    response = requests.post(url, data=data, headers=headers, timeout=600)
     return response
 
 async def get_random_ip_from_server(server, username):
@@ -535,7 +568,7 @@ async def main(args):
                         arw_transaction_id = arw_response.id
                         if arw_transaction_id:
                             logging.info(f'Successfully uploaded file to ARWEAVE. transaction: {arw_transaction_id}')
-                            references.setdefault("arweave", {}).setdefault(str(args.size), []).append({"transacion": arw_transaction_id, "sha256": sha256_hash})
+                            references.setdefault("arweave", {}).setdefault(str(args.size), []).append({"transaction": arw_transaction_id, "sha256": sha256_hash})
                         
                     ipfs_response_json = ipfs_response.json()
                     ipfs_hash = ipfs_response_json['Hash']
@@ -554,17 +587,17 @@ async def main(args):
                     chosen_ips = server_user_ips[server]
                     selected_ips = random.sample(chosen_ips, min(1, len(chosen_ips)))
                     for ip in selected_ips:
-                        task = ssh_curl(ip, response_file_swarmhash, server, username, sha256_hash, 10)
+                        task = ssh_curl(ip, response_file_swarmhash, server, username, sha256_hash, 15)
                         ssh_tasks.append(task)
 
                 http_tasks = []
                 for url in random.sample(http_servers, min(1, len(http_servers))):
-                    task = http_curl(url, response_file_swarmhash, sha256_hash, 10)
+                    task = http_curl(url, response_file_swarmhash, sha256_hash, 15)
                     http_tasks.append(task)
 
                 ipfs_tasks = []
                 for url in random.sample(ipfs_gateway_servers, min(1, len(ipfs_gateway_servers))):
-                    task = http_ipfs(url, cid, sha256_hash, 20)
+                    task = http_ipfs(url, cid, sha256_hash, 30)
                     ipfs_tasks.append(task)
 
                 arw_tasks = []
@@ -598,11 +631,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
-                            DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).observe(elapsed_time)
+                            DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
+                            DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
+                            NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
                         logging.info("-----------------END-------------------------")
 
                         if elapsed_time < fastest_time:
@@ -623,8 +656,8 @@ async def main(args):
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
-                DL_TIME_EXTREMES.labels(storage=fastest_storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
-                DL_TIME_EXTREMES.labels(storage=slowest_storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
+                DL_TIME_EXTREMES.labels(storage=fastest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
+                DL_TIME_EXTREMES.labels(storage=slowest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
@@ -642,7 +675,7 @@ async def main(args):
 
                 http_tasks = []
                 for url in random.sample(swarm_gateway_servers, min(3, len(swarm_gateway_servers))):
-                    task = http_curl(url, swarmhash, sha256_hash, 3)
+                    task = http_curl(url, swarmhash, sha256_hash, 1)
                     http_tasks.append(task)
 
                 all_tasks = http_tasks
@@ -658,11 +691,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+                            REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                            REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
@@ -673,7 +706,7 @@ async def main(args):
                 sha256_hash = entry["sha256"]
                 ipfs_tasks = []
                 for url in random.sample(ipfs_gateway_servers, min(3, len(ipfs_gateway_servers))):
-                    task = http_ipfs(url, cid, sha256_hash, 3)
+                    task = http_ipfs(url, cid, sha256_hash, 1)
                     ipfs_tasks.append(task)
 
                 results = await asyncio.gather(*ipfs_tasks, return_exceptions=True)
@@ -688,11 +721,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+                            REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                            REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
@@ -703,7 +736,7 @@ async def main(args):
                 sha256_hash = entry["sha256"]
                 arw_tasks = []
                 for url in random.sample(arw_gateway_servers, min(3, len(arw_gateway_servers))):
-                    task = http_arw(url, trans, sha256_hash, 3)
+                    task = http_arw(url, trans, sha256_hash, 1)
                     arw_tasks.append(task)
 
                 results = await asyncio.gather(*arw_tasks, return_exceptions=True)
@@ -718,11 +751,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            REPEAT_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+                            REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            REPEAT_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                            REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
@@ -736,7 +769,7 @@ async def main(args):
                 ssh_tasks = []
                 for server, chosen_ips in server_user_ips.items():
                     for ip in chosen_ips:
-                        task = ssh_curl(ip, swarmhash, server, username, sha256_hash, 3)
+                        task = ssh_curl(ip, swarmhash, server, username, sha256_hash, 1)
                         ssh_tasks.append(task)
 
                 #all_tasks = ssh_tasks + http_tasks
@@ -752,11 +785,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+                            OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                            OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
@@ -768,12 +801,12 @@ async def main(args):
 
                 ipfs_get_tasks = []
                 for ip in ipfs_get_servers:
-                    task = ipfs_get(ip, cid, ip, username, sha256_hash, 3)
+                    task = ipfs_get(ip, cid, ip, username, sha256_hash, 1)
                     ipfs_get_tasks.append(task)
 
                 ipfs_dl_tasks = []
                 for url in ipfs_dl_servers:
-                    task = http_ipfs(url, cid, sha256_hash, 3)
+                    task = http_ipfs(url, cid, sha256_hash, 1)
                     ipfs_dl_tasks.append(task)
 
                 all_tasks = ipfs_get_tasks + ipfs_dl_tasks
@@ -790,11 +823,11 @@ async def main(args):
 
                         if sha256_hash == sha256sum_output:
                             logging.info("SHA256 hashes match.")
-                            OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+                            OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+                            OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
@@ -806,7 +839,7 @@ async def main(args):
 
         #        arw_dl_tasks = []
         #        for url in arw_gateway_servers:
-        #            task = http_arw(url, trans, sha256_hash, 3)
+        #            task = http_arw(url, trans, sha256_hash, 1)
         #            arw_dl_tasks.append(task)
 
         #        all_tasks = arw_dl_tasks
@@ -823,11 +856,11 @@ async def main(args):
 
         #                if sha256_hash == sha256sum_output:
         #                    logging.info("SHA256 hashes match.")
-        #                    OLD_DL_TIME.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-        #                    OLD_DL_TIME_SUM.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
+        #                    OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+        #                    OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
         #                else:
         #                    logging.info("SHA256 hashes do !NOT! match.")
-        #                    OLD_NO_MATCH.labels(storage=storage, server=server, attempts=attempts, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
+        #                    OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
         #                logging.info("-----------------END-------------------------")
 
         #                push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
