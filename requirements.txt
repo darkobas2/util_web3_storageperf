@@ -8,3 +8,5 @@ pycryptodome
 IPFS-Toolkit
 tempfile
 ritual-arweave
+pinata-python
+pytz
