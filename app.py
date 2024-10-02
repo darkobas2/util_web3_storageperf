@@ -228,27 +228,12 @@ def generate_random_string(length):
 def generate_random_json_data(size_in_kb):
     data = {}
     size_in_bytes = size_in_kb * 1024
-    key_length = 10
-    value_length = 50
+    key = generate_random_string(8)
+    overhead = len(f'{{"{key}":""}}'.encode('utf-8'))
+    value_length = size_in_bytes - overhead
     
-    # Estimate the size of one item (key-value pair)
-    sample_key = generate_random_string(key_length)
-    sample_value = generate_random_string(value_length)
-    sample_item_size = len(json.dumps({sample_key: sample_value}).encode('utf-8'))
-    
-    # Estimate the number of items needed
-    num_items = size_in_bytes // sample_item_size
-
-    for _ in range(num_items):
-        key = generate_random_string(key_length)
-        value = generate_random_string(value_length)
-        data[key] = value
-
-    # Adjust to ensure we meet or slightly exceed the desired size
-    while len(json.dumps(data).encode('utf-8')) < size_in_bytes:
-        key = generate_random_string(key_length)
-        value = generate_random_string(value_length)
-        data[key] = value
+    value = generate_random_string(value_length)
+    data = {key: value}
 
     return json.dumps(data)
 
