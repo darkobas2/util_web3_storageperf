@@ -566,22 +566,54 @@ async def main(args):
                 # Save references to JSON file after each upload
                 with open(references_file, 'w') as f:
                     json.dump(references, f, indent=4)
-#
+
+    if args.download:
+        # Read the references from file
+        if os.path.exists(references_file):
+            with open(references_file, 'r') as f:
+                references = json.load(f)
+        else:
+            logging.error("References file not found. Exiting download.")
+            sys.exit(1)
+
+        while True:
+            for r in range(repeat_count):
+
                 swarm_tasks = []
-                for url in random.sample(swarm_dl_servers, min(1, len(swarm_dl_servers))):
-                    task = http_curl(url, response_file_swarmhash, sha256_hash, 15)
-                    swarm_tasks.append(task)
-
                 ipfs_tasks = []
-                for url in random.sample(ipfs_dl_servers, min(1, len(ipfs_dl_servers))):
-                    task = http_ipfs(url, ipfs_hash, sha256_hash, 60)
-                    ipfs_tasks.append(task)
-
                 arw_tasks = []
-                for url in random.sample(arw_dl_servers, min(1, len(arw_dl_servers))):
-                    task = http_arw(url, arw_transaction_id, sha256_hash, 30000)
-                    arw_tasks.append(task)
 
+                # Create download tasks for Swarm
+                if "swarm" in references:
+                    for size, swarm_entries in references["swarm"].items():
+                        for entry in swarm_entries:
+                            swarmhash = entry["hash"]
+                            sha256_hash = entry["sha256"]
+                            for url in random.sample(swarm_dl_servers, min(1, len(swarm_dl_servers))):
+                                task = http_curl(url, swarmhash, sha256_hash, 15)
+                                swarm_tasks.append(task)
+
+                # Create download tasks for IPFS
+                if "ipfs" in references:
+                    for size, ipfs_entries in references["ipfs"].items():
+                        for entry in ipfs_entries:
+                            ipfs_hash = entry["hash"]
+                            sha256_hash = entry["sha256"]
+                            for url in random.sample(ipfs_dl_servers, min(1, len(ipfs_dl_servers))):
+                                task = http_ipfs(url, ipfs_hash, sha256_hash, 60)
+                                ipfs_tasks.append(task)
+
+                # Create download tasks for Arweave
+                if "arweave" in references:
+                    for size, arweave_entries in references["arweave"].items():
+                        for entry in arweave_entries:
+                            arw_transaction_id = entry["hash"]
+                            sha256_hash = entry["sha256"]
+                            for url in random.sample(arw_dl_servers, min(1, len(arw_dl_servers))):
+                                task = http_arw(url, arw_transaction_id, sha256_hash, 30000)
+                                arw_tasks.append(task)
+
+                # Combine all tasks and run them asynchronously
                 all_tasks = arw_tasks + swarm_tasks + ipfs_tasks
                 results = await asyncio.gather(*all_tasks, return_exceptions=True)
 
