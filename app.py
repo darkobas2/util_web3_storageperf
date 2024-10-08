@@ -237,6 +237,19 @@ def generate_random_json_data(size_in_kb):
 
     return json.dumps(data)
 
+def generate_random_binary_data(size_in_kb):
+    """
+    Generates random binary data of the specified size in kilobytes.
+
+    Args:
+        size_in_kb (int): The size of the binary data to generate in kilobytes.
+
+    Returns:
+        bytes: A bytes object containing the random binary data.
+    """
+    size_in_bytes = size_in_kb * 1024
+    return os.urandom(size_in_bytes)
+
 def get_ip_from_dns(dns_name):
     """
     This function attempts to resolve a DNS name and return the IP address.
@@ -366,8 +379,9 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
                             logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
 
                 elapsed_time = time.time() - initial_start_time
-                content_str = json.loads(content)  # Trim trailing newline if present
-                sha256sum_output = hashlib.sha256(content_str.encode('utf-8')).hexdigest()
+                #content_str = json.loads(content)  # Trim trailing newline if present
+                #sha256sum_output = hashlib.sha256(content_str.encode('utf-8')).hexdigest()
+                sha256sum_output = hashlib.sha256(content).hexdigest()
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
@@ -461,6 +475,54 @@ async def pin_json_to_ipfs(jwt, json_data, filename):
 
     return None
 
+async def pin_file_to_ipfs(jwt, file_path, filename, file_type="application/octet-stream"):
+    """
+    Pins a file to IPFS using Pinata's API.
+
+    Args:
+        jwt (str): Your Pinata JWT token.
+        file_path (str): The path to the file to upload.
+        filename (str): The filename to associate with the pinned data.
+        file_type (str): The MIME type of the file being uploaded. Defaults to 'application/octet-stream'.
+
+    Returns:
+        dict: The response from the Pinata API if successful, otherwise None.
+    """
+    url = 'https://api.pinata.cloud/pinning/pinFileToIPFS'
+    headers = {
+        'Authorization': f'Bearer {jwt}'
+    }
+
+    form_data = aiohttp.FormData()
+
+    # Open the file as a binary stream and add it to the form
+    with open(file_path, 'rb') as file:
+        form_data.add_field('file', file, filename=filename, content_type=file_type)
+
+        # Optional: Add pinataMetadata
+        pinata_metadata = {
+            "name": filename,
+        }
+        form_data.add_field('pinataMetadata', json.dumps(pinata_metadata))
+
+        # Optional: Add pinataOptions
+        pinata_options = {
+            "cidVersion": 1
+        }
+        form_data.add_field('pinataOptions', json.dumps(pinata_options))
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(url, data=form_data, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        logging.error(f'Error pinning file to Pinata: {response.status} - {await response.text()}')
+            except aiohttp.ClientError as e:
+                logging.error(f'Error pinning file to Pinata: {e}')
+
+    return None
+
 async def get_random_ip_from_servers(servers, username):
     server_user_ips = {}
     tasks = [get_random_ip_from_server(server, username) for server in servers]
@@ -495,12 +557,15 @@ async def main(args):
         while True:
             for r in range(repeat_count):
 
-                random_json = generate_random_json_data(args.size)
-                sha256_hash = hashlib.sha256(random_json.encode('utf-8')).hexdigest()
+                #random_json = generate_random_json_data(args.size)
+                random_bin = generate_random_binary_data(args.size)
+                #sha256_hash = hashlib.sha256(random_json.encode('utf-8')).hexdigest()
+                sha256_hash = hashlib.sha256(random_bin).hexdigest()
                 logging.info(f'Generated {args.size}kb file. SHA256 hash of upload: {sha256_hash}')
 
                 start_upload_time = time.time()
-                response = upload_file(random_json, swarm_ul_server)
+                #response = upload_file(random_json, swarm_ul_server)
+                response = upload_file(random_bin, swarm_ul_server)
                 upload_duration = time.time() - start_upload_time
 
                 if 200 <= response.status_code < 300:
@@ -521,51 +586,63 @@ async def main(args):
                     logging.info(f'Error: Failed to upload: {response.status_code}')
                 
 
-                # Upload to Arweave using a temporary file
-                with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='w', suffix='.json') as tmpfile:
-                    tmpfile.write(random_json)
+                # Upload to Arweave and pinata using a temporary file
+                #with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='w', suffix='.json') as tmpfile:
+                with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='wb', suffix='.bin') as tmpfile:
+                    #tmpfile.write(random_json)
+                    tmpfile.write(random_bin)
                     tmpfile.flush()  # Ensure all data is written
 
-                    with open(tmpfile.name, 'rb') as f:
-                        files = {'file': f}
-                        arw_start_upload_time = time.time()
-                        arw_response = arw_file_manager.upload(tmpfile.name, tags_dict={'filename': tmpfile.name})
-                        arw_upload_duration = time.time() - arw_start_upload_time
-                        logging.info(f'Upload to arweave duration: {arw_upload_duration}')
-                        arw_transaction_id = arw_response.id
-                        if arw_transaction_id:
-                            logging.info(f'Successfully uploaded file to ARWEAVE. transaction: {arw_transaction_id}')
-                            # Store Arweave reference, upload time, and SHA256 hash
-                            references.setdefault("arweave", {}).setdefault(str(args.size), []).append({
-                                "hash": arw_transaction_id, 
-                                "sha256": sha256_hash,
-                                "upload_time": arw_upload_duration,  # Add upload time here
-                                "timestamp": datetime.datetime.now(pytz.utc).isoformat()
-                            })
+                    try:
+                        with open(tmpfile.name, 'rb') as f:
+                            files = {'file': f}
+                            arw_start_upload_time = time.time()
+                            arw_response = arw_file_manager.upload(tmpfile.name, tags_dict={'filename': tmpfile.name})
+                            arw_upload_duration = time.time() - arw_start_upload_time
+                            logging.info(f'Upload to arweave duration: {arw_upload_duration}')
+                            arw_transaction_id = arw_response.id
+                            if arw_transaction_id:
+                                logging.info(f'Successfully uploaded file to ARWEAVE. transaction: {arw_transaction_id}')
+                                # Store Arweave reference, upload time, and SHA256 hash
+                                references.setdefault("arweave", {}).setdefault(str(args.size), []).append({
+                                    "hash": arw_transaction_id, 
+                                    "sha256": sha256_hash,
+                                    "upload_time": arw_upload_duration,  # Add upload time here
+                                    "timestamp": datetime.datetime.now(pytz.utc).isoformat()
+                                })
+                            else:
+                                logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
+                    except Exception as e:
+                        logging.error(f"Error uploading: {str(e)}")
                         
-                # Upload to Pinata
-                pinata_start_upload_time = time.time()
-                pinata_response = await pin_json_to_ipfs(PINATA_JWT, random_json, f'datafund-speedtest-{args.size}kb-{r}')
-                pinata_upload_duration = time.time() - pinata_start_upload_time
-                
-                if pinata_response:
-                    ipfs_hash = pinata_response['IpfsHash']
-                    ipfs_pin_size = pinata_response['PinSize']
-                    ipfs_timestamp = pinata_response['Timestamp']
+                    # Upload to Pinata
+                    pinata_start_upload_time = time.time()
+                    #pinata_response = await pin_json_to_ipfs(PINATA_JWT, random_json, f'speedtest-{args.size}kb-{r}')
+                    pinata_response = await pin_file_to_ipfs(PINATA_JWT, tmpfile.name, f'speedtest-{args.size}kb-{r}')
+                    pinata_upload_duration = time.time() - pinata_start_upload_time
+                    
+                    if pinata_response:
+                        ipfs_hash = pinata_response['IpfsHash']
+                        ipfs_pin_size = pinata_response['PinSize']
+                        ipfs_timestamp = pinata_response['Timestamp']
 
-                logging.info(f'Successfully uploaded file to Pinata. IPFS Hash: {ipfs_hash}, Pin Size: {ipfs_pin_size}, Timestamp: {ipfs_timestamp}')
+                        logging.info(f'Successfully uploaded file to Pinata. IPFS Hash: {ipfs_hash}, Pin Size: {ipfs_pin_size}, Timestamp: {ipfs_timestamp}')
+                    else:
+                        logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
 
-                # Store Pinata reference, upload time, and SHA256 hash
-                references.setdefault("ipfs", {}).setdefault(str(args.size), []).append({
-                    "hash": ipfs_hash,
-                    "sha256": sha256_hash,
-                    "upload_time": pinata_upload_duration,
-                    "timestamp": ipfs_timestamp
-                })
+                    # Store Pinata reference, upload time, and SHA256 hash
+                    references.setdefault("ipfs", {}).setdefault(str(args.size), []).append({
+                        "hash": ipfs_hash,
+                        "sha256": sha256_hash,
+                        "upload_time": pinata_upload_duration,
+                        "timestamp": ipfs_timestamp
+                    })
 
                 # Save references to JSON file after each upload
                 with open(references_file, 'w') as f:
                     json.dump(references, f, indent=4)
+            if not continuous:
+                break
 
     if args.download:
         # Read the references from file
