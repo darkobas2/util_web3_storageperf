@@ -9,8 +9,8 @@ LOGFILE="logfile.log"
   python3 app.py --upload --repeat 1 --size 100
   python3 app.py --upload --repeat 1 --size 1000
   python3 app.py --upload --repeat 1 --size 10000
-  python3 app.py --upload --repeat 1 --size 50000
-  sleep 600
+  #python3 app.py --upload --repeat 1 --size 50000
+  sleep 900
   python3 app.py --download --repeat 30
   echo "all runs completed $(date)"
 } 2>&1 | tee -a "$LOGFILE"
