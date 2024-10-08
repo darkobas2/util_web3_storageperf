@@ -292,7 +292,7 @@ def extract_port(url):
         port = None
     return ip,port
 
-async def http_curl(url, swarmhash, expected_sha256, max_attempts):
+async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
     global args
     storage = 'Swarm'
     ip, port = extract_port(url)
@@ -327,15 +327,15 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts):
                 sha256sum_output = hashlib.sha256(content).hexdigest()
 
                 if sha256sum_output == expected_sha256:
-                    return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(ip), url, attempt, storage
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(ip), url, attempt, storage, size
 
             except Exception as exc:
                 logging.error(f"HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, server_loc, get_ip_from_dns(ip), url, max_attempts, storage
+    return 0, None, server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size
 
-async def http_ipfs(url, cid, expected_sha256, max_attempts):
+async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
     global args
     storage = 'Ipfs'
     ip, port = extract_port(url)
@@ -371,16 +371,16 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts):
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempt, storage
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
 
             except Exception as exc:
                 logging.error(f"IPFS: HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
-    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage
+    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
 
-async def http_arw(url, transaction_id, expected_sha256, max_attempts):
+async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     global args
     storage = 'Arweave'
     ipinfo_handler = ipinfo.getHandler(ipinfo_token)
@@ -403,7 +403,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts):
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"ARW: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, sha256sum_output, server_loc, get_ip_from_dns(url), url, attempt, storage
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
 
             except Exception as exc:
                 pass
@@ -415,7 +415,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts):
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"ARW: Failed after {max_attempts} attempts for {url}")
-    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage
+    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
 
 def upload_file(data, url_list):
     global swarm_batch_id
@@ -590,7 +590,7 @@ async def main(args):
                             swarmhash = entry["hash"]
                             sha256_hash = entry["sha256"]
                             for url in random.sample(swarm_dl_servers, min(1, len(swarm_dl_servers))):
-                                task = http_curl(url, swarmhash, sha256_hash, 15)
+                                task = http_curl(url, swarmhash, sha256_hash, 15, size)
                                 swarm_tasks.append(task)
 
                 # Create download tasks for IPFS
@@ -600,7 +600,7 @@ async def main(args):
                             ipfs_hash = entry["hash"]
                             sha256_hash = entry["sha256"]
                             for url in random.sample(ipfs_dl_servers, min(1, len(ipfs_dl_servers))):
-                                task = http_ipfs(url, ipfs_hash, sha256_hash, 60)
+                                task = http_ipfs(url, ipfs_hash, sha256_hash, 60, size)
                                 ipfs_tasks.append(task)
 
                 # Create download tasks for Arweave
@@ -610,7 +610,7 @@ async def main(args):
                             arw_transaction_id = entry["hash"]
                             sha256_hash = entry["sha256"]
                             for url in random.sample(arw_dl_servers, min(1, len(arw_dl_servers))):
-                                task = http_arw(url, arw_transaction_id, sha256_hash, 30000)
+                                task = http_arw(url, arw_transaction_id, sha256_hash, 30000, size)
                                 arw_tasks.append(task)
 
                 # Combine all tasks and run them asynchronously
@@ -633,7 +633,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:                        
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, size = result
                         
                         # Create a result dictionary
                         result_dict = {
@@ -642,23 +642,24 @@ async def main(args):
                             "latitude": server_loc.latitude if server_loc else None,
                             "longitude": server_loc.longitude if server_loc else None,
                             "download_time_seconds": elapsed_time,
-                            "sha256_match": sha256_hash == sha256sum_output,
-                            "attempts": attempts
+                            "sha256_match": sha256sum_output,
+                            "attempts": attempts,
+                            "size": size
                         }
                         # Append the result to the corresponding storage list
                         results_by_storage[storage].append(result_dict) 
 
                         logging.info("-----------------START-----------------------")
-                        logging.info(f"size: {args.size}kb")
-                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts. Size {args.size} ")
+                        logging.info(f"size: {size}kb")
+                        logging.info(f"{storage} initial download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts. Size {size} ")
 
-                        if sha256_hash == sha256sum_output:
+                        if sha256sum_output == 'true':
                             logging.info("SHA256 hashes match.")
-                            DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(elapsed_time)
-                            DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).observe(elapsed_time)
+                            DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
-                            NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).inc()
+                            NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
                         logging.info("-----------------END-------------------------")
 
                         if elapsed_time < fastest_time:
@@ -679,8 +680,8 @@ async def main(args):
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
-                DL_TIME_EXTREMES.labels(storage=fastest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(fastest_time)
-                DL_TIME_EXTREMES.labels(storage=slowest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=args.size).set(slowest_time)
+                DL_TIME_EXTREMES.labels(storage=fastest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(fastest_time)
+                DL_TIME_EXTREMES.labels(storage=slowest_storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(slowest_time)
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
@@ -694,7 +695,7 @@ async def main(args):
                 save_test_results([
                     {
                         "timestamp": datetime.datetime.now(pytz.utc).isoformat(),
-                        "size_kb": args.size,
+                        "size_kb": size,
                         "storage": storage,
                         "results": storage_results
                     }
@@ -704,204 +705,6 @@ async def main(args):
             if not continuous:
                 break
 
-    #elif args.gateway:
-    #    #server_user_ips = await get_random_ip_from_servers(ssh_servers, username)
-    #    for size, swarm_entries in references["swarm"].items():
-    #        for entry in swarm_entries:
-    #            swarmhash = entry["swarmhash"]
-    #            sha256_hash = entry["sha256"]
-#
-    #            http_tasks = []
-    #            for url in random.sample(swarm_gateway_servers, min(3, len(swarm_gateway_servers))):
-    #                task = http_curl(url, swarmhash, sha256_hash, 1)
-    #                http_tasks.append(task)
-#
-    #            all_tasks = http_tasks
-    #            results = await asyncio.gather(*all_tasks, return_exceptions=True)
-#
-    #            for result in results:
-    #                if isinstance(result, Exception):
-    #                    logging.error(f'Task failed: {str(result)}')
-    #                else:
-    #                    elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage  = result
-    #                    logging.info("-----------------START-----------------------")
-    #                    logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-#
-    #                    if sha256_hash == sha256sum_output:
-    #                        logging.info("SHA256 hashes match.")
-    #                        REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-    #                        REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-    #                    else:
-    #                        logging.info("SHA256 hashes do !NOT! match.")
-    #                        REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-    #                    logging.info("-----------------END-------------------------")
-#
-    #                    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
-#
-    #    for size, ipfs_entries in references["ipfs"].items():
-    #        for entry in ipfs_entries:
-    #            cid = entry["cid"]
-    #            sha256_hash = entry["sha256"]
-    #            ipfs_tasks = []
-    #            for url in random.sample(ipfs_gateway_servers, min(3, len(ipfs_gateway_servers))):
-    #                task = http_ipfs(url, cid, sha256_hash, 1)
-    #                ipfs_tasks.append(task)
-#
-    #            results = await asyncio.gather(*ipfs_tasks, return_exceptions=True)
-#
-    #            for result in results:
-    #                if isinstance(result, Exception):
-    #                    logging.error(f'Task failed: {str(result)}')
-    #                else:
-    #                    elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-    #                    logging.info("-----------------START-----------------------")
-    #                    logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-#
-    #                    if sha256_hash == sha256sum_output:
-    #                        logging.info("SHA256 hashes match.")
-    #                        REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-    #                        REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-    #                    else:
-    #                        logging.info("SHA256 hashes do !NOT! match.")
-    #                        REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-    #                    logging.info("-----------------END-------------------------")
-#
-    #                    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
-#
-    #    for size, arw_entries in references["arweave"].items():
-    #        for entry in arw_entries:
-    #            trans = entry["transaction"]
-    #            sha256_hash = entry["sha256"]
-    #            arw_tasks = []
-    #            for url in random.sample(arw_gateway_servers, min(3, len(arw_gateway_servers))):
-    #                task = http_arw(url, trans, sha256_hash, 1)
-    #                arw_tasks.append(task)
-#
-    #            results = await asyncio.gather(*arw_tasks, return_exceptions=True)
-#
-    #            for result in results:
-    #                if isinstance(result, Exception):
-    #                    logging.error(f'Task failed: {str(result)}')
-    #                else:
-    #                    elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-    #                    logging.info("-----------------START-----------------------")
-    #                    logging.info(f"{storage} gateway download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-#
-    #                    if sha256_hash == sha256sum_output:
-    #                        logging.info("SHA256 hashes match.")
-    #                        REPEAT_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-    #                        REPEAT_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-    #                    else:
-    #                        logging.info("SHA256 hashes do !NOT! match.")
-    #                        REPEAT_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-    #                    logging.info("-----------------END-------------------------")
-#
-    #                    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
-#
-    #elif args.download:
-    #    server_user_ips = await get_random_ip_from_servers(ssh_servers, username)
-    #    for size, swarm_entries in references["swarm"].items():
-    #        for entry in swarm_entries:
-    #            swarmhash = entry["swarmhash"]
-    #            sha256_hash = entry["sha256"]
-    #            ssh_tasks = []
-    #            for server, chosen_ips in server_user_ips.items():
-    #                for ip in chosen_ips:
-    #                    task = ssh_curl(ip, swarmhash, server, username, sha256_hash, 1)
-    #                    ssh_tasks.append(task)
-#
-    #            #all_tasks = ssh_tasks + http_tasks
-    #            results = await asyncio.gather(*ssh_tasks, return_exceptions=True)
-#
-    #            for result in results:
-    #                if isinstance(result, Exception):
-    #                    logging.error(f'Task failed: {str(result)}')
-    #                else:
-    #                    elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-    #                    logging.info("-----------------START-----------------------")
-    #                    logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-#
-    #                    if sha256_hash == sha256sum_output:
-    #                        logging.info("SHA256 hashes match.")
-    #                        OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-    #                        OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-    #                    else:
-    #                        logging.info("SHA256 hashes do !NOT! match.")
-    #                        OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-    #                    logging.info("-----------------END-------------------------")
-#
-    #                    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
-#
-    #    for size, ipfs_entries in references["ipfs"].items():
-    #        for entry in ipfs_entries:
-    #            cid = entry["cid"]
-    #            sha256_hash = entry["sha256"]
-#
-    #            ipfs_get_tasks = []
-    #            for ip in ipfs_get_servers:
-    #                task = ipfs_get(ip, cid, ip, username, sha256_hash, 1)
-    #                ipfs_get_tasks.append(task)
-#
-    #            ipfs_dl_tasks = []
-    #            for url in ipfs_dl_servers:
-    #                task = http_ipfs(url, cid, sha256_hash, 1)
-    #                ipfs_dl_tasks.append(task)
-#
-    #            all_tasks = ipfs_get_tasks + ipfs_dl_tasks
-#
-    #            results = await asyncio.gather(*all_tasks, return_exceptions=True)
-#
-    #            for result in results:
-    #                if isinstance(result, Exception):
-    #                    logging.error(f'Task failed: {str(result)}')
-    #                else:
-    #                    elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-    #                    logging.info("-----------------START-----------------------")
-    #                    logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-#
-    #                    if sha256_hash == sha256sum_output:
-    #                        logging.info("SHA256 hashes match.")
-    #                        OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-    #                        OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-    #                    else:
-    #                        logging.info("SHA256 hashes do !NOT! match.")
-    #                        OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-    #                    logging.info("-----------------END-------------------------")
-#
-    #                    push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
-#
-        #for size, arw_entries in references["arweave"].items():
-        #    for entry in arw_entries:
-        #        trans = entry["transaction"]
-        #        sha256_hash = entry["sha256"]
-
-        #        arw_dl_tasks = []
-        #        for url in arw_gateway_servers:
-        #            task = http_arw(url, trans, sha256_hash, 1)
-        #            arw_dl_tasks.append(task)
-
-        #        all_tasks = arw_dl_tasks
-
-        #        results = await asyncio.gather(*all_tasks, return_exceptions=True)
-
-        #        for result in results:
-        #            if isinstance(result, Exception):
-        #                logging.error(f'Task failed: {str(result)}')
-        #            else:
-        #                elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage = result
-        #                logging.info("-----------------START-----------------------")
-        #                logging.info(f"{storage} old data download time: {elapsed_time} seconds from {server_loc.city if server_loc else 'Unknown'} - {server} within {attempts} attempts")
-
-        #                if sha256_hash == sha256sum_output:
-        #                    logging.info("SHA256 hashes match.")
-        #                    OLD_DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
-        #                    OLD_DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
-        #                else:
-        #                    logging.info("SHA256 hashes do !NOT! match.")
-        #                    OLD_NO_MATCH.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).inc()
-        #                logging.info("-----------------END-------------------------")
-
-        #                push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
 
 if __name__ == '__main__':
     logging.info('Welcome to web3 storage speed test')

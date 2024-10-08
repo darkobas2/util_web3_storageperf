@@ -1,5 +1,5 @@
 {
-  "swarm_dl_servers": ["download.gateway.ethswarm.org", "188.245.154.61:1633", "188.245.177.151:8080"],
+  "swarm_dl_servers": ["download.gateway.ethswarm.org", "188.245.154.61:1633", "188.245.177.151:1633"],
   "swarm_ul_server": ["5.9.50.180:1633/bzz"],
   "swarm_batch_id": "1a95d8d787210ffc747c93c594e3a6c9ca5a6d0b19563a82e1a5ae3105fc8f57",
   "ipfs_dl_servers": ["5.9.50.180:8080", "188.245.154.61:8080", "188.245.177.151:8080"],
@@ -11,5 +11,5 @@
   "ipinfo_token": "c1e11482e511b0",
   "ipfs_data_dir": "/mnt/ipfs",
   "arw_ul_server": "https://arweave.net",
-  "arw_dl_servers": ["https://permagate.io"]
+  "arw_dl_servers": ["https://permagate.io", "https://ar.perplex.finance", "https://ar-io.dev"]
 }
