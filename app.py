@@ -666,7 +666,7 @@ async def main(args):
                         for entry in swarm_entries:
                             swarmhash = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(swarm_dl_servers, min(1, len(swarm_dl_servers))):
+                            for url in swarm_dl_servers:
                                 task = http_curl(url, swarmhash, sha256_hash, 15, size)
                                 swarm_tasks.append(task)
 
@@ -676,7 +676,7 @@ async def main(args):
                         for entry in ipfs_entries:
                             ipfs_hash = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(ipfs_dl_servers, min(1, len(ipfs_dl_servers))):
+                            for url in ipfs_dl_servers:
                                 task = http_ipfs(url, ipfs_hash, sha256_hash, 60, size)
                                 ipfs_tasks.append(task)
 
@@ -686,7 +686,7 @@ async def main(args):
                         for entry in arweave_entries:
                             arw_transaction_id = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(arw_dl_servers, min(1, len(arw_dl_servers))):
+                            for url in arw_dl_servers:
                                 task = http_arw(url, arw_transaction_id, sha256_hash, 30000, size)
                                 arw_tasks.append(task)
 
