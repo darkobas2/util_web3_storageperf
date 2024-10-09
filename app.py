@@ -346,7 +346,7 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
                 logging.error(f"HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, None, server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
     global args
@@ -392,7 +392,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
-    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
 
 async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     global args
@@ -429,7 +429,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"ARW: Failed after {max_attempts} attempts for {url}")
-    return 0, None, server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
 
 def upload_file(data, url_list):
     global swarm_batch_id
