@@ -193,7 +193,7 @@ OLD_DL_TIME_SUM = Histogram('util_web3_storage_old_download_summary',
                        registry=registry)
 
 def save_test_results(results, filename="results.json"):
-    """Saves test results to a JSON file.
+    """Saves test results to a JSON file, merging results by storage and size.
 
     Args:
         results (list): A list of test result dictionaries.
@@ -202,12 +202,42 @@ def save_test_results(results, filename="results.json"):
     try:
         with open(filename, 'r+') as file:
             data = json.load(file)
-            data["tests"].extend(results)
+
+            for result in results:
+                storage = result['storage']
+                size_kb = result['size_kb']
+                
+                # Initialize storage group if not present
+                if storage not in data:
+                    data[storage] = {}
+
+                # Initialize size group if not present
+                if size_kb not in data[storage]:
+                    data[storage][size_kb] = []
+
+                # Append the results for this storage and size
+                data[storage][size_kb].extend(result['results'])
+
             file.seek(0)  # Rewind to the beginning of the file
             json.dump(data, file, indent=4)
+            file.truncate()  # Remove any leftover data after the new content
     except FileNotFoundError:
+        # If the file doesn't exist, create a new one
         with open(filename, 'w') as file:
-            json.dump({"tests": results}, file, indent=4)
+            data = {}
+            for result in results:
+                storage = result['storage']
+                size_kb = result['size_kb']
+                
+                if storage not in data:
+                    data[storage] = {}
+                
+                if size_kb not in data[storage]:
+                    data[storage][size_kb] = []
+                
+                data[storage][size_kb].extend(result['results'])
+            
+            json.dump(data, file, indent=4)
 
 def signal_handler(sig, frame):
     global args
@@ -538,7 +568,6 @@ async def main(args):
 
     repeat_count = args.repeat
     continuous = args.continuous
-    results_by_storage = {"Swarm": [], "Ipfs": [], "Arweave": []}  # Initialize a dictionary to store results by storage
     arw_file_manager = FileManager(api_url=arw_ul_server, wallet_path='./arw_wallet.json')
 
     PINATA_JWT = load_pinata_credentials()
@@ -655,7 +684,7 @@ async def main(args):
 
         while True:
             for r in range(repeat_count):
-
+                results_by_storage = {"Swarm": [], "Ipfs": [], "Arweave": []}  # Initialize a dictionary to store results by storage
                 swarm_tasks = []
                 ipfs_tasks = []
                 arw_tasks = []
@@ -666,27 +695,30 @@ async def main(args):
                         for entry in swarm_entries:
                             swarmhash = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(swarm_dl_servers, min(1, len(swarm_dl_servers))):
+                            # Iterate through all Swarm download servers instead of sampling
+                            for url in swarm_dl_servers:
                                 task = http_curl(url, swarmhash, sha256_hash, 15, size)
                                 swarm_tasks.append(task)
-
+                
                 # Create download tasks for IPFS
                 if "ipfs" in references:
                     for size, ipfs_entries in references["ipfs"].items():
                         for entry in ipfs_entries:
                             ipfs_hash = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(ipfs_dl_servers, min(1, len(ipfs_dl_servers))):
+                            # Iterate through all IPFS download servers
+                            for url in ipfs_dl_servers:
                                 task = http_ipfs(url, ipfs_hash, sha256_hash, 60, size)
                                 ipfs_tasks.append(task)
-
+                
                 # Create download tasks for Arweave
                 if "arweave" in references:
                     for size, arweave_entries in references["arweave"].items():
                         for entry in arweave_entries:
                             arw_transaction_id = entry["hash"]
                             sha256_hash = entry["sha256"]
-                            for url in random.sample(arw_dl_servers, min(1, len(arw_dl_servers))):
+                            # Iterate through all Arweave download servers
+                            for url in arw_dl_servers:
                                 task = http_arw(url, arw_transaction_id, sha256_hash, 30000, size)
                                 arw_tasks.append(task)
 
@@ -762,21 +794,42 @@ async def main(args):
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
-            #push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+            push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+
+            # Initialize a nested dictionary to hold grouped results by storage and size
+            grouped_results = {}
+            
+            # Loop through the results by storage
             for storage, storage_results in results_by_storage.items():
                 logging.info(f"Results for {storage}:")
+            
                 for result in storage_results:
+                    size_kb = result['size']  # Ensure to extract the correct size
                     logging.info(result)
-        
-                # Save the results to the JSON file
-                save_test_results([
-                    {
-                        "timestamp": datetime.datetime.now(pytz.utc).isoformat(),
-                        "size_kb": size,
-                        "storage": storage,
-                        "results": storage_results
-                    }
-                ])
+            
+                    # If the storage type is not in the grouped results dictionary, initialize it
+                    if storage not in grouped_results:
+                        grouped_results[storage] = {}
+            
+                    # If the size is not in the storage's dictionary, initialize it
+                    if size_kb not in grouped_results[storage]:
+                        grouped_results[storage][size_kb] = []
+            
+                    # Append the result to the respective storage and size group
+                    grouped_results[storage][size_kb].append(result)
+            
+            # Save the grouped results to the JSON file
+            for storage, sizes in grouped_results.items():
+                for size, results in sizes.items():
+                    # Append all results for this size and storage combination
+                    save_test_results([
+                        {
+                            "timestamp": datetime.datetime.now(pytz.utc).isoformat(),
+                            "size_kb": size,
+                            "storage": storage,
+                            "results": results
+                        }
+                    ])
 
             logging.info('All repeats done')
             if not continuous:
