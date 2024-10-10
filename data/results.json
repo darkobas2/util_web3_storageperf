@@ -1,0 +1,1322 @@
+{
+    "Swarm": {
+        "1": [
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 3.980377674102783,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 3.8209781646728516,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 11.210954666137695,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 11.10262656211853,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.9121675491333,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 10.709517478942871,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.584413766860962,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.407352685928345,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            }
+        ],
+        "10": [
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 3.6389973163604736,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 3.487393617630005,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 10.20593547821045,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.389487266540527,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.915363073348999,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 9.702365636825562,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.583771705627441,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.412089824676514,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            }
+        ],
+        "100": [
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 3.3670754432678223,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 3.2121901512145996,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 9.246542692184448,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.206234216690063,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.009346723556519,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 8.749646186828613,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 8.718724250793457,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 8.537913084030151,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            }
+        ],
+        "1000": [
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 3.161144495010376,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 2.9980645179748535,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 8.391194581985474,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.035219669342041,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 8.058979272842407,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 7.8859758377075195,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 8.922989845275879,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 8.434702157974243,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            }
+        ],
+        "10000": [
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 6.511190891265869,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 5.355401515960693,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 9.617620468139648,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.975760698318481,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 11.418166875839233,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 15,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 11.348297834396362,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 9.778210401535034,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            }
+        ],
+        "50000": [
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 6.361621856689453,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "128.140.29.197",
+                "ip": "download.gateway.ethswarm.org",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 19.11273765563965,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "188.245.154.61",
+                "ip": "188.245.154.61:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 20.12874174118042,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "188.245.177.151",
+                "ip": "188.245.177.151:1633",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 18.594173431396484,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            }
+        ]
+    },
+    "Ipfs": {
+        "1": [
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1"
+            }
+        ],
+        "10": [
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10"
+            }
+        ],
+        "100": [
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "100"
+            }
+        ],
+        "1000": [
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "1000"
+            }
+        ],
+        "10000": [
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 0,
+                "sha256_match": null,
+                "attempts": 60,
+                "size": "10000"
+            }
+        ],
+        "50000": [
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 2.706906795501709,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "5.9.50.180:8080",
+                "ip": "5.9.50.180:8080",
+                "latitude": "50.4779",
+                "longitude": "12.3713",
+                "download_time_seconds": 12.165081977844238,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "188.245.154.61:8080",
+                "ip": "188.245.154.61:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 10.240723133087158,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            },
+            {
+                "server": "188.245.177.151:8080",
+                "ip": "188.245.177.151:8080",
+                "latitude": "49.4542",
+                "longitude": "11.0775",
+                "download_time_seconds": 12.255669355392456,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "50000"
+            }
+        ]
+    },
+    "Arweave": {
+        "1": [
+            {
+                "server": "188.114.97.3",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 5.643654108047485,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 5.452610731124878,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 16.194041967391968,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.114.97.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 16.029428243637085,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "18.172.242.129",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 15.817369937896729,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 15.658535718917847,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "188.114.96.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 15.499011278152466,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            },
+            {
+                "server": "18.172.242.39",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 15.303104877471924,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1"
+            }
+        ],
+        "10": [
+            {
+                "server": "18.172.242.39",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 5.2747483253479,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 5.110896348953247,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 15.145222663879395,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.114.97.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 14.992353916168213,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "18.172.242.17",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 14.797102451324463,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 14.644273519515991,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "188.114.96.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 14.475956678390503,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            },
+            {
+                "server": "18.172.242.17",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 14.327741622924805,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10"
+            }
+        ],
+        "100": [
+            {
+                "server": "18.172.242.129",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 4.944097518920898,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 4.77451753616333,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 14.145635604858398,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.114.97.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 13.981723308563232,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "18.172.242.91",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 13.786803722381592,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 13.64055585861206,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "188.114.96.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 13.487140893936157,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            },
+            {
+                "server": "18.172.242.129",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 13.293235063552856,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "100"
+            }
+        ],
+        "1000": [
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 4.633757829666138,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "18.172.242.91",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 4.428457260131836,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 17.68379259109497,
+                "sha256_match": "true",
+                "attempts": 4,
+                "size": "1000"
+            },
+            {
+                "server": "188.114.97.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 13.007164001464844,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "18.172.242.39",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 12.84254240989685,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 63.86083626747131,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "188.114.96.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 12.49676251411438,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            },
+            {
+                "server": "18.172.242.39",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 12.283626794815063,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "1000"
+            }
+        ],
+        "10000": [
+            {
+                "server": "188.114.96.3",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 4.282864809036255,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 4.1007771492004395,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.114.96.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 71.41796398162842,
+                "sha256_match": "true",
+                "attempts": 33,
+                "size": "10000"
+            },
+            {
+                "server": "188.114.97.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 12.003109455108643,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "18.172.242.91",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 11.791920900344849,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "188.114.97.3",
+                "ip": "https://permagate.io",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 12.52061128616333,
+                "sha256_match": "true",
+                "attempts": 2,
+                "size": "10000"
+            },
+            {
+                "server": "188.114.96.12",
+                "ip": "https://ar.perplex.finance",
+                "latitude": "37.7621",
+                "longitude": "-122.3971",
+                "download_time_seconds": 11.426532506942749,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            },
+            {
+                "server": "18.172.242.129",
+                "ip": "https://ar-io.dev",
+                "latitude": "47.4984",
+                "longitude": "19.0404",
+                "download_time_seconds": 11.206777095794678,
+                "sha256_match": "true",
+                "attempts": 1,
+                "size": "10000"
+            }
+        ]
+    }
+}
