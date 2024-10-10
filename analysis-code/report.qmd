@@ -4,7 +4,7 @@ author: "György Barabás"
 format:
   html:
     theme: cosmo
-    number-sections: false
+    number-sections: true
     embed-resources: true
   pdf:
     keep-tex: false
@@ -81,7 +81,7 @@ dataFromJson <- function(jsonFile = "../results.json") {
 }
 ```
 
-After loading and tidying the data, here's what the first few rows of the table look like:
+After loading and tidying the data, here’s what the first few rows of the table look like:
 
 ```{r}
 dat <- dataFromJson()
@@ -122,7 +122,6 @@ dat |>
 Plotting the raw results, we get:
 
 ```{r}
-#| fig-align: center
 dat |>
   select(storage | size_kb | server | time_sec) |>
   mutate(storage = fct_reorder(storage, time_sec)) |>
@@ -153,7 +152,6 @@ At a glance, we see that IPFS is the fastest. For small files, Swarm is faster t
 What is strange is that there appears to be an "anti-pattern" whereby for IPFS, larger files lead to shorter retrieval times. Let us look at this more closely, and for all three platforms:
 
 ```{r}
-#| fig-align: center
 dat |>
   mutate(storage = fct_relevel(storage, "Swarm", "IPFS", "Arweave")) |>
   ggplot(aes(x = size_kb, y = time_sec)) +
@@ -165,10 +163,9 @@ dat |>
   theme_bw()
 ```
 
-We see that for both IPFS and Arweave, larger files lead to *shorter* download times. For Arweave and Server 1, this pattern appears reversed, but that is due to the outliers in the largest size category distorting the ordinary least-squares fit. Indeed, a median-based (Theil--Sen) regression detects a decreasing trend:
+We see that for both IPFS and Arweave, larger files lead to shorter download times. For Arweave and Server 1, this pattern appears reversed, but that is due to the outliers in the largest size category distorting the ordinary least-squares fit. Indeed, a median-based (Theil–Sen) regression detects a decreasing trend:
 
 ```{r}
-#| fig-align: center
 dat |>
   mutate(storage = fct_relevel(storage, "Swarm", "IPFS", "Arweave")) |>
   ggplot(aes(x = size_kb, y = time_sec)) +
@@ -183,7 +180,7 @@ dat |>
 
 An overall increasing trend is only seen for Swarm, but there the relationship between file size and download time is clearly nonlinear: times initially stagnate or even decrease slightly, before taking off again.
 
-Otherwise, all fitted slopes are deemed to be very unlikely to be due to pure chance, as the p-values below will show:
+Otherwise, all fitted slopes are deemed to be very unlikely to be due to pure chance, as the p-values below show:
 
 ```{r}
 regressionDat <- dat |>
@@ -216,7 +213,7 @@ regressionDat |>
   invisible()
 ```
 
-For this reason, let's re-generate the regression tables, but using Theil--Sen linear regression instead. The resuts are comparable, except that the slope for (Arweave, Server 1) is reversed:
+For this reason, let us re-generate the regression tables, but using Theil–Sen linear regression instead. The results are comparable, except that the slope for (Arweave, Server 1) is reversed:
 
 ```{r}
 dat |>
