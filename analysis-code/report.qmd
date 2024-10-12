@@ -4,29 +4,17 @@ author: "György Barabás"
 format:
   html:
     theme: cosmo
-    number-sections: true
+    number-sections: false
     embed-resources: true
-  pdf:
-    keep-tex: false
-    fontsize: 11pt
-    documentclass: article
-    papersize: a4paper
-    margin-left: 1in
-    margin-right: 1in
-    margin-top: 1in
-    margin-bottom: 1in
-    number-sections: true
-    code-block-border-left: false
-  docx:
-    number-sections: true
 knitr:
   opts_chunk:
     eval: true
     echo: true
     message: false
     warning: false
+    fig-align: center
 execute: 
-  cache: true
+  cache: false
 editor_options: 
   chunk_output_type: console
 latex-tinytex: false
@@ -44,7 +32,8 @@ library(broom)
 library(ggfortify)
 library(jsonlite)
 library(knitr)
-library(mblm)
+library(scales)
+library(kableExtra)
 
 
 
@@ -196,7 +185,7 @@ mergePlatformServer <- function(dat) {
 }
 
 plotPlatformServerFit <- function(dat, x, y, formula = y ~ x, method = lm,
-                                  log_y = FALSE) {
+                                  log_y = TRUE) {
   ggplot(dat, aes(x = {{x}}, y = {{y}})) +
     geom_point(color = "steelblue", alpha = 0.5) +
     geom_smooth(method = method, color = "goldenrod", fill = "goldenrod",
@@ -212,43 +201,42 @@ dat |>
   mergePlatformServer() |>
   # Remove faulty data points, replacing the download times of 0 with NA:
   mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec)
+  plotPlatformServerFit(size_kb, time_sec, log_y = FALSE)
 ```
 
-The general trend is always to have longer download times for larger files, as expected. We can analyze this pattern further by performing a linear regression for each platform-server combination:
+These data have a clear increasing trend. They are also manifestly nonlinear, so fitting linear functions is unlikely to do well. Instead, let us try to fix this by putting download times on the log scale as well:
+
+```{r}
+dat |>
+  mergePlatformServer() |>
+  # Remove faulty data points, replacing the download times of 0 with NA:
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec, log_y = TRUE)
+```
+
+This is a lot better, although arguably the relationships are still somewhat nonlinear. That said, let us analyze this pattern further by performing a linear regression for each platform-server combination:
 
 ```{r}
 regressionDat <- dat |>
   filter(sha256_match) |>
-  mutate(predictor = log10(size_kb), response = time_sec) |>
+  mutate(predictor = log10(size_kb), response = log10(time_sec)) |>
   nest(data = !platform & !server) |>
   mutate(fit = map(data, \(dat) lm(response ~ predictor, data = dat))) |>
   mutate(regtab = map(fit, broom::tidy)) |>
   unnest(regtab)
 ```
 
-Then we can inspect the regression statistics both for the intercepts:
+Then we can inspect the regression statistics both for the intercepts and the slopes:
 
 ```{r}
 regressionDat |>
   select(!data & !fit) |>
-  filter(term == "(Intercept)") |>
+  mutate(term = ifelse(term == "(Intercept)", "intercept", "slope")) |>
+  arrange(term, platform, server) |>
   kable()
 ```
 
-And the slopes:
-
-```{r}
-regressionDat |>
-  select(!data & !fit) |>
-  filter(term != "(Intercept)") |>
-  mutate(term = "slope") |>
-  kable()
-```
-
-As seen, the model thinks that there is no way the positive slopes are due to just chance. The same is true for most intercepts except two (maybe three) of them---all of which are for IPFS. This makes intuitive sense, because IPFS data are stored in a way that the general overhead of downloading might indeed be the smallest.
-
-The above is contingent on the assumptions of the linear regression model being fulfilled. To check whether that is so, let us make diagnostic plots:
+All parameters are significantly different from zero except for the intercept of Arweave on Server 1. To check how well the assumptions behind linear regression are fulfilled (and thus how much one can trust these results), we make diagnostic plots:
 
 ```{r}
 regressionDat |>
@@ -267,89 +255,36 @@ regressionDat |>
   invisible()
 ```
 
-Most of these diagnostics do not look good. For Swarm, there is a clear relationship between the residuals and fitted values. (This is not surprising, given the manifestly nonlinear relationship that we are capturing using the linear model.) The quantile-quantile plot also looks ugly for Server 2 (for Server 3, it looks decent). IPFS suffers from the same problems of non-independent residuals and bad Q-Q distributions, for all servers. So does Arweave, on Server 1, although the diagnostics for Server 2 look very good, and acceptable for Server 3 (where the only problem is the presence of a few extreme outliers).
-
-Given these problems with nonnormality of the residuals, it might be better to also perform a non-parametric (Theil--Sen) regression. Here are the fitted lines:
-
-```{r}
-dat |>
-  mergePlatformServer() |>
-  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec,  method = \(formula, data, weights)
-                        mblm(formula, data))
-```
-
-These are qualitatively the same as before, although some of the slopes are smaller because Theil--Sen regression correctly identifies outliers and ignores them. Re-generating the regression tables:
-
-```{r}
-theilSenDat <- dat |>
-  filter(sha256_match) |>
-  mutate(predictor = log10(size_kb), response = time_sec) |>
-  nest(data = !platform & !server) |>
-  mutate(fit = map(data, \(dat) mblm(response ~ predictor, dat))) |>
-  mutate(regtab = map(fit, broom::tidy)) |>
-  unnest(regtab)
-
-theilSenDat |>
-  select(!data & !fit) |>
-  filter(term == "(Intercept)") |>
-  kable()
-
-theilSenDat |>
-  select(!data & !fit) |>
-  filter(term != "(Intercept)") |>
-  mutate(term = "slope") |>
-  kable()
-```
-
-Qualitatively, everything is the same as before.
+Most of these diagnostics look acceptable, although the residuals clearly do depend on fitted values quite often. This is the case for both Server 2 and Server 3 on Swarm. The same is true for IPFS Server 2 and Arweave Server 1. In both cases, there are additionally large outliers distorting the results. In the other cases, the diagnostics look fine.
 
 
 
 ## Building a predictive model
 
-The previous models convincingly establish a relationship between log file size and download times that is not simply due to chance. But they are not good models for prediction, because the relationships are manifestly nonlinear, yet the fitted curve was a linear function.
+The above linear model convincingly establishes a positive relationship between log file size and log download times that is not simply due to chance. But it might not be the best model for prediction, because the relationship is manifestly nonlinear, yet the fitted curve was is linear function.
 
-One improvement that can be done is to put the download times on the log scale as well. This produces visibly more linear relationships, revealing that the "true" dependence of download times on size may be described well by a power law:
+One possible improvement is to try fitting a quadratic or cubic curve. In fact, a suite of models will be fit below, and we will employ model selection to try and choose the best. The models are:
 
-```{r}
-dat |>
-  mergePlatformServer() |>
-  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec, log_y = TRUE)
-```
+-   Quadratic (`quad`), with the formula $y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \varepsilon_i$. Here $y_i$ is the $i$th log download time (all logarithms are base 10), $x_i$ is the $i$th log file size, the $\beta_i$ are the regression coefficients, and $\varepsilon_i$ is the residual variation.
+-   Quadratic, but without the linear term (`quadsimp`). It is the same as `quad` but with $\beta_1$ set to zero: $y_i = \beta_0 + \beta_1 x_i^2 + \varepsilon_i$. This model is therefore less flexible, but also has fewer parameters which reduces the possibility of overfitting.
+-   Exponential (`exp`), with $y_i = \beta_0 + \beta_1 \exp(x_i) + \varepsilon_i$
 
-But other models appear to do just as well if not better. Let us try a quadratic model:
+Visually, all these models fit the data reasonably:
 
 ```{r}
-dat |>
-  mergePlatformServer() |>
-  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec, formula = y ~ I(x^2),
-                        log_y = TRUE)
+plotWithFormula <- function(dat, formula = y ~ x) {
+  dat |>
+    mergePlatformServer() |>
+    mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+    plotPlatformServerFit(size_kb, time_sec, formula = formula)
+}
+
+plotWithFormula(dat, y ~ x + I(x^2))
+plotWithFormula(dat, y ~ I(x^2))
+plotWithFormula(dat, y ~ exp(x))
 ```
 
-And a cubic one:
-
-```{r}
-dat |>
-  mergePlatformServer() |>
-  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec, formula = y ~ I(x^3),
-                        log_y = TRUE)
-```
-
-And an exponential:
-
-```{r}
-dat |>
-  mergePlatformServer() |>
-  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
-  plotPlatformServerFit(size_kb, time_sec, formula = y ~ exp(x),
-                        log_y = TRUE)
-```
-
-Let us compate these models. We will fit them all and extract relevant regression statistics, then compare AIC and BIC scores to perform model selection:
+Let us compare these models. We will fit them all and extract relevant regression statistics, then compare their AIC scores to perform model selection:
 
 ```{r}
 modelComparison <- dat |>
@@ -359,133 +294,145 @@ modelComparison <- dat |>
   filter(sha256_match) |>
   mutate(x = log10(size_kb), y = log10(time_sec)) |>
   select(plat_serv, x, y) |>
-  crossing(formula = list("linear"      = formula(y ~ x),
-                          "quadratic"   = formula(y ~ I(x^2)),
-                          "cubic"       = formula(y ~ I(x^3)),
-                          "exponential" = formula(y ~ exp(x)))) |>
+  crossing(formula = list(
+    "linear"    = formula(y ~ x),
+    "quad"      = formula(y ~ x + I(x^2)),
+    "quadsimp"  = formula(y ~ I(x^2)),
+    "exp"       = formula(y ~ exp(x))
+  )) |>
   mutate(model = names(formula)) |>
   nest(data = x | y) |>
   mutate(fit = map2(formula, data, lm)) |>
   mutate(regression = map(fit, tidy),
-         quality = map(fit, glance))
+         quality = map(fit, glance)) |>
+  separate(plat_serv, into = c("platform", "server"), sep = ", ")
 ```
 
-It is instructive to look at the diagnostic plots, which now look *much* better in almost all cases than before:
+We work with AIC because it is usually favored when prediction is the goal (as opposed to inference, for which BIC is more appropriate). Here is a table with the AIC scores:
 
 ```{r}
 modelComparison |>
-  mutate(model = fct_relevel(model, "linear", "quadratic",
-                             "cubic", "exponential")) |>
-  arrange(model) |>
+  unnest(quality) |>
+  select(platform | server | model | AIC) |>
+  pivot_wider(names_from = model, values_from = AIC) |>
+  kable()
+```
+
+Finding the best models, based on AIC:
+
+```{r}
+modelComparison |>
+  unnest(quality) |>
+  select(platform | server | model | AIC) |>
+  filter(AIC == min(AIC), .by = c(platform, server)) |>
+  kable()
+```
+
+The best model is `quad` one in most cases. Even in the cases when it isn't, its AIC score is not far above that of the best model. This suggests adopting this model for prediction across the board. Later on we'll also look at the predictions made by `quadsimp`; as we will see, it makes almost the same ones as `quad`.
+
+Let us check the diagnostic plots for the quadratic model `quad`:
+
+```{r}
+modelComparison |>
+  filter(model == "quad") |>
   mutate(diagnostics = map(fit, \(x) {
     autoplot(x, smooth.colour = NA, alpha = 0.3, colour = "steelblue") +
       theme_bw()
   } )) |>
-  mutate(diagnostics = pmap(list(diagnostics, plat_serv, model), \(dia, ps, m) {
-    gridExtra::grid.arrange(grobs = dia@plots, top = str_c(ps, ", ", m))
+  mutate(diagnostics = pmap(list(diagnostics, platform, server),
+                            \(dia, pf, sv, m) {
+    gridExtra::grid.arrange(grobs = dia@plots,
+                            top = str_c(pf, ", ", sv, ", cubic model"))
   } )) |>
   suppressMessages() |>
   capture.output() |>
   invisible()
 ```
 
-We can now look at AIC and BIC scores. Here is a table with AIC first:
+Not always amazing, especially the quantile-quantile plot for IPFS, Server 1. That said, here are the regression results:
 
 ```{r}
 modelComparison |>
-  unnest(quality) |>
-  select(plat_serv | model | AIC) |>
-  pivot_wider(names_from = model, values_from = AIC) |>
-  rename(`platform, server` = plat_serv) |>
-  kable()
-```
-
-And then BIC:
-
-```{r}
-modelComparison |>
-  unnest(quality) |>
-  select(plat_serv | model | BIC) |>
-  pivot_wider(names_from = model, values_from = BIC) |>
-  rename(`platform, server` = plat_serv) |>
-  kable()
-```
-
-Finding the best models:
-
-```{r}
-modelComparison |>
-  unnest(quality) |>
-  select(plat_serv | model | AIC) |>
-  filter(AIC == min(AIC), .by = plat_serv) |>
-  rename(`platform, server` = plat_serv) |>
-  kable()
-```
-
-```{r}
-modelComparison |>
-  unnest(quality) |>
-  select(plat_serv | model | BIC) |>
-  filter(BIC == min(BIC), .by = plat_serv) |>
-  rename(`platform, server` = plat_serv) |>
-  kable()
-```
-
-Both the AIC and the more conservative BIC prefer the quadratic and cubic models, to about the same degree. For simplicity, I will use the quadratic model here.
-
-Let us check the regression results for the quadratic model:
-
-```{r}
-modelComparison |>
-  filter(model == "quadratic") |>
+  filter(model == "quad") |>
   unnest(regression) |>
-  select(plat_serv, term, estimate, std.error, statistic, p.value) |>
+  select(platform, server, term, estimate, std.error, statistic, p.value) |>
+  mutate(term = case_match(
+    term,
+    "(Intercept)" ~ "beta_0",
+    "x" ~ "beta_1",
+    "I(x^2)" ~ "beta_2"
+  )) |>
   kable()
 ```
 
-The good news: the parameter values appear consistent across platforms. We could use them to formulate a prediction about the performance of these platforms, as a function of file size. We can compute the average parameter estimates across servers and use that average as the representative fit for each platform:
+Plotting the estimates, to see if they are consistent across servers:
+
+```{r}
+modelComparison |>
+  filter(model == "quad") |>
+  mutate(platform = fct_relevel(platform, "Swarm", "IPFS", "Arweave")) |>
+  unnest(regression) |>
+  select(platform, server, term, estimate) |>
+  mutate(term = case_match(
+    term,
+    "(Intercept)" ~ "beta[0]",
+    "x" ~ "beta[1]",
+    "I(x^2)" ~ "beta[2]"
+  )) |>
+  ggplot(aes(x = term, y = estimate)) +
+  geom_point(color = "steelblue", alpha = 0.7) +
+  scale_x_discrete(labels = parse_format()) +
+  facet_grid(~ platform) +
+  theme_bw()
+```
+
+While there is some spread, maybe it is not a great mistake to take the average of the parameters and treat them as "the" parameter for one platform. Let us compute these averages:
 
 ```{r}
 paramTab <- modelComparison |>
-  filter(model == "quadratic") |>
+  filter(model == "quad") |>
   unnest(regression) |>
-  separate(plat_serv, into = c("platform", "server"), sep = ", ") |>
-  select(platform, server, term, estimate, std.error, statistic, p.value) |>
+  select(platform, server, term, estimate) |>
   summarize(estimate = mean(estimate), .by = c(platform, term)) |>
-  mutate(term = ifelse(term == "(Intercept)", "a", "b")) |>
+  mutate(term = case_match(
+    term,
+    "(Intercept)" ~ "b0",
+    "x" ~ "b1",
+    "I(x^2)" ~ "b2"
+  )) |>
   pivot_wider(names_from = term, values_from = estimate)
 
 paramTab |>
-  kable()
+  rename(`$\\beta_0$` = b0, `$\\beta_1$` = b1, `$\\beta_2$` = b2) |>
+  kable(escape = FALSE, format = "latex") |>
+  kable_styling(latex_options = "HOLD_position")
 ```
 
-The general relationship is then
-$$
-\log_{10}(t)
-= a + b \log_{10}^2(s) ,
-$$ {#eq-quad-model}
-where $t$ is download time, $s$ is file size, and $a$ and $b$ are the fitted parameters summarized in the table above. So we have the following models:
+So we have the following models:
 
-|         |                                                 |
-|:--------|:------------------------------------------------|
-| Swarm   | $\log_{10}(t) = -0.551 + 0.0918 \log_{10}^2(s)$ |
-| IPFS    | $\log_{10}(t) = -0.927 + 0.0517 \log_{10}^2(s)$ |
-| Arweave | $\log_{10}(t) = +0.172 + 0.0186 \log_{10}^2(s)$ |
+|         |                                             |
+|:--------|:--------------------------------------------|
+| Swarm   | $y_i = -0.485 - 0.106   x_i + 0.116  x_i^2$ |
+| IPFS    | $y_i = -0.866 - 0.0988  x_i + 0.0745 x_i^2$ |
+| Arweave | $y_i =  0.175 - 0.00611 x_i + 0.02   x_i^2$ |
 
 : {.striped .hover}
 
-This predicts that for small file sizes, IPFS is best. Looking at the parameters $b$, it is also clear that Swarm will never catch up, but Arweave will. In turn, Swarm starts out faster than Arweave (smaller $a$) but is eventually taken over by it (larger $b$ for Swarm). We can plot the three curves:
+This predicts that for small file sizes, IPFS is best (smallest $\beta_0$), and Swarm is in the middle. In turn, for very large files, Arweave will be best (smallest $\beta_2$) and IPFS second best. To see where the curves take over one another, we can plot all three of them:
 
 ```{r}
+# s is log10(file size in KB); bi are coeffs; returns log10(download time):
+qfun <- function(s, b0, b1, b2) b0 + b1*s + b2*s^2
+
 paramTab |>
   mutate(platform = as_factor(platform)) |>
-  mutate(curve = map2(a, b, \(a, b) {
-    tibble(log_s = seq(0, 7, l = 101)) |>
-      mutate(log_t = a + b * log_s^2)
+  mutate(curve = pmap(list(b0, b1, b2), \(b0, b1, b2) {
+    tibble(x = seq(0, 7, l = 101)) |>
+      mutate(y = qfun(x, b0, b1, b2))
   } )) |>
   unnest(curve) |>
-  mutate(s = 10^log_s, t = 10^log_t) |>
-  ggplot(aes(x = s, y = t, color = platform)) +
+  mutate(x = 10^x, y = 10^y) |>
+  ggplot(aes(x = x, y = y, color = platform)) +
   geom_line(linewidth = 1) +
   labs(x = "File size", y = "Predicted download time", color = NULL) +
   scale_x_log10(breaks = 10^c(0, 3, 6), labels = c("1KB", "1MB", "1GB")) +
@@ -494,3 +441,68 @@ paramTab |>
   theme_bw()
 ```
 
+Incidentally: as advertised above, we can create the same plot using the `quadsimp` model instead. The predictions do not change appreciably:
+
+```{r}
+modelComparison |>
+  filter(model == "quadsimp") |>
+  unnest(regression) |>
+  select(platform, server, term, estimate) |>
+  summarize(estimate = mean(estimate), .by = c(platform, term)) |>
+  mutate(term = case_match(
+    term,
+    "(Intercept)" ~ "b0",
+    "I(x^2)" ~ "b1"
+  )) |>
+  pivot_wider(names_from = term, values_from = estimate) |>
+  mutate(platform = as_factor(platform)) |>
+  mutate(curve = pmap(list(b0, b1), \(b0, b1) {
+    tibble(x = seq(0, 7, l = 101)) |>
+      mutate(y = qfun(x, b0, 0, b1))
+  } )) |>
+  unnest(curve) |>
+  mutate(x = 10^x, y = 10^y) |>
+  ggplot(aes(x = x, y = y, color = platform)) +
+  geom_line(linewidth = 1) +
+  labs(x = "File size", y = "Predicted download time", color = NULL) +
+  scale_x_log10(breaks = 10^c(0, 3, 6), labels = c("1KB", "1MB", "1GB")) +
+  scale_y_log10(breaks = c(1, 60, 3600), labels = c("1s", "1m", "1h")) +
+  scale_color_manual(values = c("steelblue", "goldenrod", "forestgreen")) +
+  theme_bw()
+```
+
+Plotting the two model predictions together, to show how close they are:
+
+```{r}
+modelComparison |>
+  filter(model %in% c("quad", "quadsimp")) |>
+  unnest(regression) |>
+  select(platform, server, model, term, estimate) |>
+  summarize(estimate = mean(estimate),
+            .by = c(platform, term, model)) |>
+  mutate(term = case_match(
+    term,
+    "(Intercept)" ~ "b0",
+    "x" ~ "b1",
+    "I(x^2)" ~ "b2"
+  )) |>
+  pivot_wider(names_from = term, values_from = estimate,
+              values_fill = 0) |>
+  mutate(platform = as_factor(platform)) |>
+  mutate(curve = pmap(list(b0, b1, b2), \(b0, b1, b2) {
+    tibble(x = seq(0, 7, l = 101)) |>
+      mutate(y = qfun(x, b0, b1, b2))
+  } )) |>
+  unnest(curve) |>
+  mutate(x = 10^x, y = 10^y) |>
+  ggplot(aes(x = x, y = y, color = platform, linetype = model)) +
+  geom_line(linewidth = 1) +
+  labs(x = "File size", y = "Predicted download time",
+       color = "Platform", linetype = "Model") +
+  scale_x_log10(breaks = 10^c(0, 3, 6), labels = c("1KB", "1MB", "1GB")) +
+  scale_y_log10(breaks = c(1, 60, 3600), labels = c("1s", "1m", "1h")) +
+  scale_color_manual(values = c("steelblue", "goldenrod", "forestgreen")) +
+  theme_bw()
+```
+
+Finally, a quick note: it is unlikely that the model is realistic for very large files. for instance, we see that Swarm takes between about 10 minutes (based on `quadsimp`) and 20 minutes (based on `quad`) to download 1GB of data. But it is unlikely that downloading 100GB would take 2.44 days (!), as the `quadsimp` model would predict.
