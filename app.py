@@ -325,13 +325,13 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
                     base_url_http = f'http://{ip}/bzz/{swarmhash}'
 
                 try:
-                    async with session.get(base_url_https) as response:
+                    async with session.get(base_url_http) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
                 except aiohttp.ClientConnectorSSLError:
                     logging.warning(f"SSL error, retrying with HTTP for {url}")
-                    async with session.get(base_url_http) as response:
+                    async with session.get(base_url_https) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
@@ -340,13 +340,13 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
                 sha256sum_output = hashlib.sha256(content).hexdigest()
 
                 if sha256sum_output == expected_sha256:
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(ip), url, attempt, storage, size
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(ip), url, attempt, storage, size, swarmhash
 
             except Exception as exc:
                 logging.error(f"HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, 'false', server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size, swarmhash
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
     global args
@@ -367,13 +367,13 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
                     base_url_https = f'https://{ip}/ipfs/{cid}'
                     base_url_http = f'http://{ip}/ipfs/{cid}'
                 try:
-                    async with session.get(base_url_https) as response:
+                    async with session.get(base_url_http) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
                 except aiohttp.ClientConnectorSSLError:
                     logging.warning(f"SSL error, retrying with HTTP for {url}")
-                    async with session.get(base_url_http) as response:
+                    async with session.get(base_url_https) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
@@ -385,14 +385,14 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid
 
             except Exception as exc:
                 logging.error(f"IPFS: HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
-    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, cid
 
 async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     global args
@@ -417,7 +417,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"ARW: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, transaction_id
 
             except Exception as exc:
                 pass
@@ -429,7 +429,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"ARW: Failed after {max_attempts} attempts for {url}")
-    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, transaction_id
 
 def upload_file(data, url_list):
     global swarm_batch_id
@@ -437,7 +437,7 @@ def upload_file(data, url_list):
         "Content-Type": "application/json",
         "swarm-postage-batch-id": swarm_batch_id
     }
-    url = f"http://{url_list[0]}"
+    url = f"https://{url_list[0]}"
 
     response = requests.post(url=url, data=data, headers=headers, timeout=600)
     return response
@@ -677,7 +677,7 @@ async def main(args):
                             ipfs_hash = entry["hash"]
                             sha256_hash = entry["sha256"]
                             for url in ipfs_dl_servers:
-                                task = http_ipfs(url, ipfs_hash, sha256_hash, 60, size)
+                                task = http_ipfs(url, ipfs_hash, sha256_hash, 15, size)
                                 ipfs_tasks.append(task)
 
                 # Create download tasks for Arweave
@@ -687,12 +687,24 @@ async def main(args):
                             arw_transaction_id = entry["hash"]
                             sha256_hash = entry["sha256"]
                             for url in arw_dl_servers:
-                                task = http_arw(url, arw_transaction_id, sha256_hash, 30000, size)
+                                task = http_arw(url, arw_transaction_id, sha256_hash, 15, size)
                                 arw_tasks.append(task)
 
                 # Combine all tasks and run them asynchronously
                 all_tasks = arw_tasks + swarm_tasks + ipfs_tasks
-                results = await asyncio.gather(*all_tasks, return_exceptions=True)
+                #results = await asyncio.gather(*all_tasks, return_exceptions=True)
+                # Run tasks serially and append results
+                results = []
+                for task in all_tasks:
+                    result = await task
+                    results.append(result)
+            
+                # Process the results
+                for result in results:
+                    if isinstance(result, Exception):
+                        print(f"Error downloading: {result}")
+                    else:
+                        print(f"Download successful: {result}")
 
                 fastest_time = float('inf')
                 fastest_server = None
@@ -710,7 +722,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:                        
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, size = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, size, reference = result
                         
                         # Create a result dictionary
                         result_dict = {
@@ -721,7 +733,8 @@ async def main(args):
                             "download_time_seconds": elapsed_time,
                             "sha256_match": sha256sum_output,
                             "attempts": attempts,
-                            "size": size
+                            "size": size,
+                            "ref": reference
                         }
                         # Append the result to the corresponding storage list
                         results_by_storage[storage].append(result_dict) 
@@ -762,7 +775,7 @@ async def main(args):
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
-            #push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+            push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
             for storage, storage_results in results_by_storage.items():
                 logging.info(f"Results for {storage}:")
                 for result in storage_results:
