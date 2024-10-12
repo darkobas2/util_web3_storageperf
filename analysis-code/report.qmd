@@ -26,7 +26,10 @@ knitr:
     message: false
     warning: false
 execute: 
-  cache: false
+  cache: true
+editor_options: 
+  chunk_output_type: console
+latex-tinytex: false
 ---
 
 
@@ -46,14 +49,14 @@ library(mblm)
 
 
 serversFromConfig <- function(configFile = "../config.json") {
-  jsonlite::fromJSON(configFile) |>
+  fromJSON(configFile) |>
     as_tibble() |>
     select(contains("dl")) |>
     mutate(server = str_c("Server ", 1:3), .before = 1) |>
     rename_with(\(x) str_remove(x, "_dl_servers"), !server) |>
-    pivot_longer(!server, names_to = "storage", values_to = "ip") |>
-    mutate(storage = case_match(
-      storage,
+    pivot_longer(!server, names_to = "platform", values_to = "ip") |>
+    mutate(platform = case_match(
+      platform,
       "swarm" ~ "Swarm",
       "ipfs"  ~ "IPFS",
       "arw"   ~ "Arweave"
@@ -65,33 +68,56 @@ dataFromJsonRaw <- function(jsonFile = "../results.json") {
   jsonlite::fromJSON(jsonFile) |>
     as_tibble() |>
     unnest(tests) |>
-    unnest(results)
+    unnest(results) |>
+    rename(time_sec = download_time_seconds,
+           replicate = ref,
+           platform = storage)
 }
 
 
-dataFromJson <- function(jsonFile = "../results.json") {
-  dataFromJsonRaw(jsonFile) |>
+dataFromJson <- function(rawTable) {
+  rawTable |>
     mutate(sha256_match = (sha256_match == "true")) |>
-    mutate(storage = ifelse(storage == "Ipfs", "IPFS", storage)) |>
-    rename(time_sec = download_time_seconds) |>
+    mutate(platform = ifelse(platform == "Ipfs", "IPFS", platform)) |>
     mutate(size_kb = as.integer(size)) |>
     select(!size & !server & !timestamp) |>
-    left_join(serversFromConfig(), by = join_by(storage, ip)) |>
-    relocate(size_kb, server, time_sec, attempts, sha256_match, .after = storage)
+    left_join(serversFromConfig(), by = join_by(platform, ip)) |>
+    relocate(size_kb, server, time_sec, attempts, sha256_match,
+             .after = platform)
 }
 ```
 
 After loading and tidying the data, here’s what the first few rows of the table look like:
 
 ```{r}
-dat <- dataFromJson()
+dat <- dataFromJson(dataFromJsonRaw())
 
 dat |>
   head(n = 10) |>
   kable()
 ```
 
-We can do some sanity checks. First of all, every download succeeded:
+We can do some sanity checks. First of all, the experiment is well balanced, with 30 replicates per size, server, and platform:
+
+```{r}
+dat |>
+  count(size_kb, server, platform, name = "number of replicates") |>
+  count(`number of replicates`,
+        name = "size-server-platform combinations") |>
+  kable()
+```
+
+And the replicates are also correctly assigned:
+
+```{r}
+dat |>
+  count(server, replicate, name = "number of replicates") |>
+  count(`number of replicates`,
+        name = "server-replicate combinations") |>
+  kable()
+```
+
+Let us check if any of the sha256 matches failed:
 
 ```{r}
 dat |>
@@ -99,21 +125,28 @@ dat |>
   kable()
 ```
 
-And the experiment is well balanced, with 30 replicates per size, server, and platform:
+Indeed, there are 150 failures. Let us check where those failed attempts are:
 
 ```{r}
 dat |>
-  count(size_kb, server, storage) |>
+  filter(!sha256_match) |>
+  count(platform, size_kb, server) |>
   kable()
 ```
 
-Furthermore, most downloads succeeded in a single attempt, with only a few instances on Arweave where two download attempts were needed instead of one:
+In short, all Swarm downloads on Server 1 have failed, and nothing else.
+
+Those same failed downloads also always had 15 download attempts. All other downloads succeeded in a single attempt:
 
 ```{r}
 dat |>
-  count(storage, attempts) |>
+  count(platform, attempts, server) |>
+  pivot_wider(names_from = platform, values_from = attempts) |>
+  relocate(Swarm, IPFS, Arweave, .after = n) |>
   kable()
 ```
+
+So everything in the data look OK at first glance *except* for the `(Swarm, Server 1)` combination.
 
 
 
@@ -123,8 +156,9 @@ Plotting the raw results, we get:
 
 ```{r}
 dat |>
-  select(storage | size_kb | server | time_sec) |>
-  mutate(storage = fct_reorder(storage, time_sec)) |>
+  filter(sha256_match) |>
+  select(platform | size_kb | server | time_sec) |>
+  mutate(platform = fct_reorder(platform, time_sec)) |>
   mutate(size = case_when(
     size_kb ==     1 ~ "1 KB",
     size_kb ==    10 ~ "10 KB",
@@ -133,10 +167,10 @@ dat |>
     size_kb == 10000 ~ "10 MB"
   )) |>
   mutate(size = fct_reorder(size, size_kb)) |>
-  ggplot(aes(x = time_sec, color = storage, fill = storage)) +
+  ggplot(aes(x = time_sec, color = platform, fill = platform)) +
   geom_density(alpha = 0.2, bw = 0.05) +
-  scale_x_log10(breaks = c(10, 60, 360), labels = c("10s", "1m", "6m")) +
-  labs(x = "Retrieval time", y = "Density",
+  scale_x_log10() +
+  labs(x = "Retrieval time (seconds)", y = "Density",
        color = "Platform: ", fill = "Platform: ") +
   scale_color_manual(values = c("steelblue", "goldenrod", "forestgreen")) +
   scale_fill_manual(values = c("steelblue", "goldenrod", "forestgreen")) +
@@ -147,65 +181,85 @@ dat |>
 
 Here we have retrieval times (on the log scale) along the x-axis and density of incidence along the y-axis. The curves are higher where there are more data. Colors represent the different storage platforms; facet rows are the different servers used, and facet columns are the various data sizes.
 
-At a glance, we see that IPFS is the fastest. For small files, Swarm is faster than Arweave. For larger files, it is a bit slower but still comparable.
+At a glance, we see that IPFS is the fastest. For small files, Swarm is faster than Arweave. For 10MB files, it is a bit slower but still comparable. Somewhat strangely, the Swarm distributions look bimodal, even on `Server 2` and `Server 3` where the downloads succeeded. This should probably be investigated further.
 
-What is strange is that there appears to be an "anti-pattern" whereby for IPFS, larger files lead to shorter retrieval times. Let us look at this more closely, and for all three platforms:
-
-```{r}
-dat |>
-  mutate(storage = fct_relevel(storage, "Swarm", "IPFS", "Arweave")) |>
-  ggplot(aes(x = size_kb, y = time_sec)) +
-  geom_point(color = "steelblue", alpha = 0.5) +
-  geom_smooth(method = lm, color = "goldenrod", fill = "goldenrod") +
-  scale_x_log10() +
-  labs(x = "File size (KB)", y = "Download time (seconds)") +
-  facet_grid(server ~ storage) +
-  theme_bw()
-```
-
-We see that for both IPFS and Arweave, larger files lead to shorter download times. For Arweave and Server 1, this pattern appears reversed, but that is due to the outliers in the largest size category distorting the ordinary least-squares fit. Indeed, a median-based (Theil–Sen) regression detects a decreasing trend:
+Now we check the relationship between file size and download times, for each unique platform-server combination (removing the faulty `(Swarm, Server 1)` data, of course):
 
 ```{r}
+mergePlatformServer <- function(dat) {
+  dat |>
+    # Make sure platform-server combinations can be properly sorted:
+    mutate(platform = fct_relevel(platform, "Swarm", "IPFS", "Arweave")) |>
+    arrange(platform, server, size_kb) |>
+    # Merge platform-server combinations, for plotting purposes:
+    mutate(plat_serv = as_factor(str_c(platform, ", ", server)))
+}
+
+plotPlatformServerFit <- function(dat, x, y, formula = y ~ x, method = lm,
+                                  log_y = FALSE) {
+  ggplot(dat, aes(x = {{x}}, y = {{y}})) +
+    geom_point(color = "steelblue", alpha = 0.5) +
+    geom_smooth(method = method, color = "goldenrod", fill = "goldenrod",
+                formula = formula) +
+    scale_x_log10() +
+    { if (log_y) scale_y_log10() else scale_y_continuous() } +
+    labs(x = "File size (KB)", y = "Download time (seconds)") +
+    facet_wrap(~ plat_serv, scales = "free_y") +
+    theme_bw()
+}
+
 dat |>
-  mutate(storage = fct_relevel(storage, "Swarm", "IPFS", "Arweave")) |>
-  ggplot(aes(x = size_kb, y = time_sec)) +
-  geom_point(color = "steelblue", alpha = 0.5) +
-  geom_smooth(method = \(formula, data, weights) mblm(formula, data),
-              color = "goldenrod", fill = "goldenrod") +
-  scale_x_log10() +
-  labs(x = "File size (KB)", y = "Download time (seconds)") +
-  facet_grid(server ~ storage) +
-  theme_bw()
+  mergePlatformServer() |>
+  # Remove faulty data points, replacing the download times of 0 with NA:
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec)
 ```
 
-An overall increasing trend is only seen for Swarm, but there the relationship between file size and download time is clearly nonlinear: times initially stagnate or even decrease slightly, before taking off again.
-
-Otherwise, all fitted slopes are deemed to be very unlikely to be due to pure chance, as the p-values below show:
+The general trend is always to have longer download times for larger files, as expected. We can analyze this pattern further by performing a linear regression for each platform-server combination:
 
 ```{r}
 regressionDat <- dat |>
-  mutate(size = log10(size_kb)) |>
-  nest(data = !storage & !server) |>
-  mutate(fit = map(data, \(dat) lm(time_sec ~ size, data = dat))) |>
+  filter(sha256_match) |>
+  mutate(predictor = log10(size_kb), response = time_sec) |>
+  nest(data = !platform & !server) |>
+  mutate(fit = map(data, \(dat) lm(response ~ predictor, data = dat))) |>
   mutate(regtab = map(fit, broom::tidy)) |>
   unnest(regtab)
+```
 
+Then we can inspect the regression statistics both for the intercepts:
+
+```{r}
 regressionDat |>
   select(!data & !fit) |>
-  filter(term != "(Intercept)") |>
+  filter(term == "(Intercept)") |>
   kable()
 ```
 
-However, the assumptions behind linear regression do not hold well for Swarm and for Arweave under Server 1:
+And the slopes:
+
+```{r}
+regressionDat |>
+  select(!data & !fit) |>
+  filter(term != "(Intercept)") |>
+  mutate(term = "slope") |>
+  kable()
+```
+
+As seen, the model thinks that there is no way the positive slopes are due to just chance. The same is true for most intercepts except two (maybe three) of them---all of which are for IPFS. This makes intuitive sense, because IPFS data are stored in a way that the general overhead of downloading might indeed be the smallest.
+
+The above is contingent on the assumptions of the linear regression model being fulfilled. To check whether that is so, let us make diagnostic plots:
 
 ```{r}
 regressionDat |>
   filter(term != "(Intercept)") |>
+  mutate(platform = fct_relevel(platform, "Swarm", "IPFS", "Arweave")) |>
+  arrange(platform, server) |>
   mutate(diagnostics = map(fit, \(x) {
     autoplot(x, smooth.colour = NA, alpha = 0.3, colour = "steelblue") +
       theme_bw()
   } )) |>
-  mutate(diagnostics = pmap(list(diagnostics, storage, server), \(dia, sto, se) {
+  mutate(diagnostics = pmap(list(diagnostics, platform, server), \(dia, sto, se) {
     gridExtra::grid.arrange(grobs = dia@plots, top = str_c(sto, ", ", se))
   } )) |>
   suppressMessages() |>
@@ -213,17 +267,230 @@ regressionDat |>
   invisible()
 ```
 
-For this reason, let us re-generate the regression tables, but using Theil–Sen linear regression instead. The results are comparable, except that the slope for (Arweave, Server 1) is reversed:
+Most of these diagnostics do not look good. For Swarm, there is a clear relationship between the residuals and fitted values. (This is not surprising, given the manifestly nonlinear relationship that we are capturing using the linear model.) The quantile-quantile plot also looks ugly for Server 2 (for Server 3, it looks decent). IPFS suffers from the same problems of non-independent residuals and bad Q-Q distributions, for all servers. So does Arweave, on Server 1, although the diagnostics for Server 2 look very good, and acceptable for Server 3 (where the only problem is the presence of a few extreme outliers).
+
+Given these problems with nonnormality of the residuals, it might be better to also perform a non-parametric (Theil--Sen) regression. Here are the fitted lines:
 
 ```{r}
 dat |>
-  mutate(size = log10(size_kb)) |>
-  nest(data = !storage & !server) |>
-  mutate(fit = map(data, \(dat) mblm(time_sec ~ size, dataframe = dat))) |>
+  mergePlatformServer() |>
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec,  method = \(formula, data, weights)
+                        mblm(formula, data))
+```
+
+These are qualitatively the same as before, although some of the slopes are smaller because Theil--Sen regression correctly identifies outliers and ignores them. Re-generating the regression tables:
+
+```{r}
+theilSenDat <- dat |>
+  filter(sha256_match) |>
+  mutate(predictor = log10(size_kb), response = time_sec) |>
+  nest(data = !platform & !server) |>
+  mutate(fit = map(data, \(dat) mblm(response ~ predictor, dat))) |>
   mutate(regtab = map(fit, broom::tidy)) |>
-  unnest(regtab) |>
+  unnest(regtab)
+
+theilSenDat |>
+  select(!data & !fit) |>
+  filter(term == "(Intercept)") |>
+  kable()
+
+theilSenDat |>
   select(!data & !fit) |>
   filter(term != "(Intercept)") |>
-  mutate(p.value = round(p.value, 5)) |>
+  mutate(term = "slope") |>
   kable()
 ```
+
+Qualitatively, everything is the same as before.
+
+
+
+## Building a predictive model
+
+The previous models convincingly establish a relationship between log file size and download times that is not simply due to chance. But they are not good models for prediction, because the relationships are manifestly nonlinear, yet the fitted curve was a linear function.
+
+One improvement that can be done is to put the download times on the log scale as well. This produces visibly more linear relationships, revealing that the "true" dependence of download times on size may be described well by a power law:
+
+```{r}
+dat |>
+  mergePlatformServer() |>
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec, log_y = TRUE)
+```
+
+But other models appear to do just as well if not better. Let us try a quadratic model:
+
+```{r}
+dat |>
+  mergePlatformServer() |>
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec, formula = y ~ I(x^2),
+                        log_y = TRUE)
+```
+
+And a cubic one:
+
+```{r}
+dat |>
+  mergePlatformServer() |>
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec, formula = y ~ I(x^3),
+                        log_y = TRUE)
+```
+
+And an exponential:
+
+```{r}
+dat |>
+  mergePlatformServer() |>
+  mutate(time_sec = ifelse(!sha256_match, NA, time_sec)) |>
+  plotPlatformServerFit(size_kb, time_sec, formula = y ~ exp(x),
+                        log_y = TRUE)
+```
+
+Let us compate these models. We will fit them all and extract relevant regression statistics, then compare AIC and BIC scores to perform model selection:
+
+```{r}
+modelComparison <- dat |>
+  mutate(platform = fct_relevel(platform, "Swarm", "IPFS", "Arweave")) |>
+  arrange(platform, server, size_kb) |>
+  mutate(plat_serv = as_factor(str_c(platform, ", ", server))) |>
+  filter(sha256_match) |>
+  mutate(x = log10(size_kb), y = log10(time_sec)) |>
+  select(plat_serv, x, y) |>
+  crossing(formula = list("linear"      = formula(y ~ x),
+                          "quadratic"   = formula(y ~ I(x^2)),
+                          "cubic"       = formula(y ~ I(x^3)),
+                          "exponential" = formula(y ~ exp(x)))) |>
+  mutate(model = names(formula)) |>
+  nest(data = x | y) |>
+  mutate(fit = map2(formula, data, lm)) |>
+  mutate(regression = map(fit, tidy),
+         quality = map(fit, glance))
+```
+
+It is instructive to look at the diagnostic plots, which now look *much* better in almost all cases than before:
+
+```{r}
+modelComparison |>
+  mutate(model = fct_relevel(model, "linear", "quadratic",
+                             "cubic", "exponential")) |>
+  arrange(model) |>
+  mutate(diagnostics = map(fit, \(x) {
+    autoplot(x, smooth.colour = NA, alpha = 0.3, colour = "steelblue") +
+      theme_bw()
+  } )) |>
+  mutate(diagnostics = pmap(list(diagnostics, plat_serv, model), \(dia, ps, m) {
+    gridExtra::grid.arrange(grobs = dia@plots, top = str_c(ps, ", ", m))
+  } )) |>
+  suppressMessages() |>
+  capture.output() |>
+  invisible()
+```
+
+We can now look at AIC and BIC scores. Here is a table with AIC first:
+
+```{r}
+modelComparison |>
+  unnest(quality) |>
+  select(plat_serv | model | AIC) |>
+  pivot_wider(names_from = model, values_from = AIC) |>
+  rename(`platform, server` = plat_serv) |>
+  kable()
+```
+
+And then BIC:
+
+```{r}
+modelComparison |>
+  unnest(quality) |>
+  select(plat_serv | model | BIC) |>
+  pivot_wider(names_from = model, values_from = BIC) |>
+  rename(`platform, server` = plat_serv) |>
+  kable()
+```
+
+Finding the best models:
+
+```{r}
+modelComparison |>
+  unnest(quality) |>
+  select(plat_serv | model | AIC) |>
+  filter(AIC == min(AIC), .by = plat_serv) |>
+  rename(`platform, server` = plat_serv) |>
+  kable()
+```
+
+```{r}
+modelComparison |>
+  unnest(quality) |>
+  select(plat_serv | model | BIC) |>
+  filter(BIC == min(BIC), .by = plat_serv) |>
+  rename(`platform, server` = plat_serv) |>
+  kable()
+```
+
+Both the AIC and the more conservative BIC prefer the quadratic and cubic models, to about the same degree. For simplicity, I will use the quadratic model here.
+
+Let us check the regression results for the quadratic model:
+
+```{r}
+modelComparison |>
+  filter(model == "quadratic") |>
+  unnest(regression) |>
+  select(plat_serv, term, estimate, std.error, statistic, p.value) |>
+  kable()
+```
+
+The good news: the parameter values appear consistent across platforms. We could use them to formulate a prediction about the performance of these platforms, as a function of file size. We can compute the average parameter estimates across servers and use that average as the representative fit for each platform:
+
+```{r}
+paramTab <- modelComparison |>
+  filter(model == "quadratic") |>
+  unnest(regression) |>
+  separate(plat_serv, into = c("platform", "server"), sep = ", ") |>
+  select(platform, server, term, estimate, std.error, statistic, p.value) |>
+  summarize(estimate = mean(estimate), .by = c(platform, term)) |>
+  mutate(term = ifelse(term == "(Intercept)", "a", "b")) |>
+  pivot_wider(names_from = term, values_from = estimate)
+
+paramTab |>
+  kable()
+```
+
+The general relationship is then
+$$
+\log_{10}(t)
+= a + b \log_{10}^2(s) ,
+$$ {#eq-quad-model}
+where $t$ is download time, $s$ is file size, and $a$ and $b$ are the fitted parameters summarized in the table above. So we have the following models:
+
+|         |                                                 |
+|:--------|:------------------------------------------------|
+| Swarm   | $\log_{10}(t) = -0.551 + 0.0918 \log_{10}^2(s)$ |
+| IPFS    | $\log_{10}(t) = -0.927 + 0.0517 \log_{10}^2(s)$ |
+| Arweave | $\log_{10}(t) = +0.172 + 0.0186 \log_{10}^2(s)$ |
+
+: {.striped .hover}
+
+This predicts that for small file sizes, IPFS is best. Looking at the parameters $b$, it is also clear that Swarm will never catch up, but Arweave will. In turn, Swarm starts out faster than Arweave (smaller $a$) but is eventually taken over by it (larger $b$ for Swarm). We can plot the three curves:
+
+```{r}
+paramTab |>
+  mutate(platform = as_factor(platform)) |>
+  mutate(curve = map2(a, b, \(a, b) {
+    tibble(log_s = seq(0, 7, l = 101)) |>
+      mutate(log_t = a + b * log_s^2)
+  } )) |>
+  unnest(curve) |>
+  mutate(s = 10^log_s, t = 10^log_t) |>
+  ggplot(aes(x = s, y = t, color = platform)) +
+  geom_line(linewidth = 1) +
+  labs(x = "File size", y = "Predicted download time", color = NULL) +
+  scale_x_log10(breaks = 10^c(0, 3, 6), labels = c("1KB", "1MB", "1GB")) +
+  scale_y_log10(breaks = c(1, 60, 3600), labels = c("1s", "1m", "1h")) +
+  scale_color_manual(values = c("steelblue", "goldenrod", "forestgreen")) +
+  theme_bw()
+```
+
