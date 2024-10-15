@@ -23,6 +23,7 @@ import re
 import json
 import datetime
 import pytz
+import gzip
 
 from pathlib import Path
 from aiohttp import ClientSession, ClientConnectionError, ClientResponseError
@@ -56,7 +57,7 @@ else:
 
 # Load configuration from file or environment variables
 def load_config(config_file):
-    global username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers, swarm_batch_id
+    global username, ipinfo_token, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers, swarm_batch_id
     with open(config_file, 'r') as f:
         config = json.load(f)
 
@@ -216,6 +217,22 @@ def signal_handler(sig, frame):
     push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
     sys.exit(0)  # Exit the script gracefully
 
+ipinfo_cache = {}
+
+async def get_ipinfo(ip):
+    global ipinfo_token
+
+    if ip in ipinfo_cache:
+        return ipinfo_cache[ip]
+
+    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+
+    # Cache the result
+    ipinfo_cache[ip] = server_loc
+
+    return server_loc
+
 def fetch_data(url):
     response = requests.get(url)
     response.raise_for_status()
@@ -305,13 +322,29 @@ def extract_port(url):
         port = None
     return ip,port
 
+async def handle_response(response, url, attempt):
+    content = await response.read()
+
+    if 200 <= response.status <= 299:
+        if response.headers.get('Content-Encoding') == 'gzip':
+            try:
+                content = gzip.decompress(content)
+                logging.info(f"Successful gzip decompression on attempt {attempt} for {url}")
+            except gzip.BadGzipFile:
+                logging.error(f"Failed to decompress gzip response on attempt {attempt} for {url}")
+                return None
+        logging.info(f"Successful fetch on attempt {attempt} for {url}")
+        return content
+    else:
+        logging.warning(f"Unexpected status code {response.status} on attempt {attempt} for {url}")
+    return None
+
 async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
     global args
     storage = 'Swarm'
     ip, port = extract_port(url)
 
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+    server_loc = await get_ipinfo(get_ip_from_dns(ip))
     initial_start_time = time.time()
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
@@ -353,8 +386,7 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
     storage = 'Ipfs'
     ip, port = extract_port(url)
 
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+    server_loc = await get_ipinfo(get_ip_from_dns(ip))
     initial_start_time = time.time()
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
@@ -366,39 +398,40 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
                 else:
                     base_url_https = f'https://{ip}/ipfs/{cid}'
                     base_url_http = f'http://{ip}/ipfs/{cid}'
+
                 try:
+                    # Try fetching over HTTP first
                     async with session.get(base_url_http) as response:
-                        content = await response.read()
-                        if response.status == 200:
-                            logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
+                        content = await handle_response(response, base_url_http, attempt)
+                        if content:
+                            sha256sum_output = hashlib.sha256(content).hexdigest()
+                            if sha256sum_output == expected_sha256:
+                                logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
+                                elapsed_time = time.time() - initial_start_time
+                                return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid
+
                 except aiohttp.ClientConnectorSSLError:
-                    logging.warning(f"SSL error, retrying with HTTP for {url}")
+                    logging.warning(f"SSL error, retrying with HTTPS for {url}")
+                    # Retry with HTTPS in case of SSL errors
                     async with session.get(base_url_https) as response:
-                        content = await response.read()
-                        if response.status == 200:
-                            logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
-
-                elapsed_time = time.time() - initial_start_time
-                #content_str = json.loads(content)  # Trim trailing newline if present
-                #sha256sum_output = hashlib.sha256(content_str.encode('utf-8')).hexdigest()
-                sha256sum_output = hashlib.sha256(content).hexdigest()
-
-                if sha256sum_output == expected_sha256:
-                    logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid
-
+                        content = await handle_response(response, base_url_https, attempt)
+                        if content:
+                            sha256sum_output = hashlib.sha256(content).hexdigest()
+                            if sha256sum_output == expected_sha256:
+                                logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
+                                elapsed_time = time.time() - initial_start_time
+                                return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid
             except Exception as exc:
                 logging.error(f"IPFS: HTTP error on attempt {attempt} for {url}: {exc}")
 
-    total_elapsed_time = time.time() - initial_start_time
-    logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
-    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, cid
+        total_elapsed_time = time.time() - initial_start_time
+        logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
+        return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, cid
 
 async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     global args
     storage = 'Arweave'
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
+    server_loc = await get_ipinfo(get_ip_from_dns(url))
 
     arw_file_manager = FileManager(api_url=url, wallet_path='./arw_wallet.json')
 
@@ -534,7 +567,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
+    global username, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
 
     repeat_count = args.repeat
     continuous = args.continuous
@@ -813,5 +846,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     signal.signal(signal.SIGINT, signal_handler)
     asyncio.run(main(args))
-
 
