@@ -56,6 +56,7 @@ dat |> count(server)
 dat |> count(strategy)
 dat |> count(timeout)
 dat |> count(erasure)
+dat |> count(size_kb, erasure, strategy)
 
 dat |>
   filter(size_kb == 10000) |>
