@@ -1,11 +1,8 @@
 library(jsonlite)
 library(tidyverse)
-library(broom)
-library(ggfortify)
 
 
-
-serversFromConfig <- function(configFile = "../config.json") {
+serversFromConfig <- function(configFile = "../data/config.json") {
   fromJSON(configFile) |>
     as_tibble() |>
     select(contains("dl")) |>
@@ -21,7 +18,7 @@ serversFromConfig <- function(configFile = "../config.json") {
 }
 
 
-dataFromJsonRaw <- function(jsonFile = "../results-new.json") {
+dataFromJsonRaw <- function(jsonFile = "../data/results.json") {
   fromJSON(jsonFile) |>
     as_tibble() |>
     unnest(tests) |>
@@ -47,7 +44,7 @@ dataFromJson <- function(rawTable) {
 
 
 
-dat <- dataFromJsonRaw("../results-new.json") |> dataFromJson()
+dat <- dataFromJsonRaw("../data/results_onlyswarm.json") |> dataFromJson()
 
 dat |> count(sha256_match)
 dat |> count(size_kb)
@@ -56,12 +53,11 @@ dat |> count(server)
 dat |> count(strategy)
 dat |> count(timeout)
 dat |> count(erasure)
-dat |> count(size_kb, erasure, strategy)
+dat |> count(size_kb, erasure, strategy, timeout)
 
 dat |>
-  filter(size_kb == 10000) |>
   ggplot(aes(x = time_sec)) +
-  geom_density() +
+  geom_density(color = "steelblue", fill = "steelblue", alpha = 0.2) +
   facet_grid(erasure ~ strategy, labeller = label_both) +
   scale_x_log10() +
   theme_bw() +
