@@ -35,30 +35,44 @@ dataFromJson <- function(rawTable) {
     mutate(size_kb = as.integer(size)) |>
     select(!size & !server & !timestamp) |>
     mutate(platform = ifelse(platform == "Ipfs","IPFS",platform)) |>
-    relocate(size_kb, server = ip, time_sec, attempts, sha256_match,
-             .after = platform) |>
-    relocate(timeout = `dl_retrieval-timeout`,
-             strategy = dl_redundancy,
-             erasure = ul_redundancy, .after = time_sec)
+    semi_join(serversFromConfig(), by = join_by(platform, ip)) |>
+    left_join(serversFromConfig(), by = join_by(platform, ip)) |>
+    relocate(size_kb, server, time_sec, attempts, sha256_match,
+             .after = platform)
 }
 
 
 
-dat <- dataFromJsonRaw("../data/results_onlyswarm.json") |> dataFromJson()
+dat <- dataFromJsonRaw("../data/results.json") |> dataFromJson()
 
 dat |> count(sha256_match)
 dat |> count(size_kb)
 dat |> count(platform)
 dat |> count(server)
-dat |> count(strategy)
-dat |> count(timeout)
-dat |> count(erasure)
-dat |> count(size_kb, erasure, strategy, timeout)
 
 dat |>
-  ggplot(aes(x = time_sec)) +
-  geom_density(color = "steelblue", fill = "steelblue", alpha = 0.2) +
-  facet_grid(erasure ~ strategy, labeller = label_both) +
+  filter(sha256_match) |>
+  select(platform | size_kb | server | time_sec) |>
+  mutate(platform = fct_reorder(platform, time_sec)) |>
+  mutate(size = case_when(
+    size_kb ==     1 ~ "1 KB",
+    size_kb ==    10 ~ "10 KB",
+    size_kb ==   100 ~ "100 KB",
+    size_kb ==  1000 ~ "1 MB",
+    size_kb == 10000 ~ "10 MB"
+  )) |>
+  mutate(size = fct_reorder(size, size_kb)) |>
+  ggplot(aes(x = time_sec, color = platform, fill = platform)) +
+  geom_density(alpha = 0.2, bw = 0.05) +
   scale_x_log10() +
+  labs(x = "Download time (seconds)", y = "Density",
+       color = "Platform: ", fill = "Platform: ") +
+  scale_color_manual(
+    values = c("steelblue", "goldenrod", "forestgreen")
+  ) +
+  scale_fill_manual(
+    values = c("steelblue", "goldenrod", "forestgreen")
+  ) +
+  facet_grid(server ~ size, scales = "fixed") +
   theme_bw() +
-  theme(panel.grid = element_blank())
+  theme(legend.position = "bottom", panel.grid = element_blank())
