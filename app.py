@@ -349,7 +349,12 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size, redunda
     server_loc = await get_ipinfo(get_ip_from_dns(ip))
     initial_start_time = time.time()
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
+    headers = {
+        "swarm-redundancy-fallback-mode": "False",
+        "swarm-chunk-retrieval-timeout": str(args.dl_retrieval),
+        "swarm-redundancy-strategy": str(args.dl_redundancy) 
+    }
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=100000)) as session:
         for attempt in range(1, max_attempts + 1):
             try:
                 if port:
@@ -360,13 +365,13 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size, redunda
                     base_url_http = f'http://{ip}/bzz/{swarmhash}'
 
                 try:
-                    async with session.get(base_url_http) as response:
+                    async with session.get(base_url_http, headers=headers) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
                 except aiohttp.ClientConnectorSSLError:
                     logging.warning(f"SSL error, retrying with HTTP for {url}")
-                    async with session.get(base_url_https) as response:
+                    async with session.get(base_url_https, headers=headers) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
@@ -842,13 +847,13 @@ if __name__ == '__main__':
     logging.info('Welcome to web3 storage speed test')
     hostname = os.getenv('HOSTNAME', 'unknown')
     job_label = f'web3storage_speed_{hostname}'
-    load_config('config.json')
+    load_config('data/config.json')
     parser = argparse.ArgumentParser(description='Swarm speed test for Gnosis.')
     parser.add_argument('--url', type=str, default="https://bee-1.fairdatasociety.org/bzz", help='URL for uploading data')
     parser.add_argument('--size', type=int, default=100, help='size of data in kb')
     parser.add_argument('--ul-redundancy', type=int, default=0, help='swarm upload redundancy lvl')
     parser.add_argument('--dl-redundancy', type=int, default=0, help='swarm download redundancy lvl')
-    parser.add_argument('--dl-retrieval', type=int, default=30000, help='swarm download retrieval in ms')
+    parser.add_argument('--dl-retrieval', type=str, default="30000ms", help='swarm download retrieval in ms')
     parser.add_argument('--repeat', type=int, help='Number of times to repeat the upload process', default=1)
     parser.add_argument('--continuous', action='store_true', help='Continuously upload chunks (overrides --repeat)')
     parser.add_argument('--upload', action='store_true', help='Upload')
