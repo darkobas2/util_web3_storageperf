@@ -576,7 +576,7 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global username, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
+    global references_file, results_file, username, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
 
     repeat_count = args.repeat
     continuous = args.continuous
