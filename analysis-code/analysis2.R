@@ -56,52 +56,47 @@ prepareData <- function(jsonFile) {
 
 
 
-dat <-
-  bind_rows(
-    prepareData("../data/results_onlyswarm_2024-11-06_19-08.json"),
-    prepareData("../data/results_onlyswarm_2024-11-07_19-24.json")
-  ) |>
+dat <- prepareData("../data/results_2024-11-11_14-19.json") |>
   select(platform, size, server, erasure, strategy,
          time_sec, sha256_match, attempts)
-
 
 dat |> count(sha256_match)
 dat |> count(attempts)
 dat |> count(size)
 dat |> count(platform)
 dat |> count(server)
-dat |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
+dat |> count(erasure)
+dat |> count(strategy)
+dat |> count(platform, server, size) |> print(n = Inf)
 
 
 dat |>
   filter(sha256_match) |>
-  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
-  mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
-  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
-  ggplot(aes(x = as_factor(size), y = time_sec, color = strategy, fill = strategy)) +
-  geom_boxplot(alpha = 0.3, coef = Inf) +
+  ggplot(aes(x = as_factor(size), y = time_sec)) +
+  geom_boxplot(alpha = 0.3, coef = Inf, color = "steelblue", fill = "steelblue") +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
-  scale_color_manual(values = c(NONE = "steelblue",
-                                DATA = "goldenrod",
-                                RACE = "forestgreen")) +
-  scale_fill_manual(values  = c(NONE = "steelblue",
-                                DATA = "goldenrod",
-                                RACE = "forestgreen")) +
-  labs(x = "File size", y = "Download time (seconds)",
-       color = "Retrieval strategy", fill = "Retrieval strategy") +
-  facet_grid(server ~ erasure) +
+  labs(x = "File size", y = "Download time (seconds)") +
+  facet_grid(server ~ platform) +
   theme_bw()
 
+dat |>
+  filter(sha256_match) |>
+  ggplot(aes(x = size, y = time_sec)) +
+  geom_point(alpha = 0.7, shape = 1, color = "steelblue",
+             position = position_jitter(width = 0.2, height = 0)) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
+                labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
+  scale_y_log10() +
+  labs(x = "File size", y = "Download time (seconds)") +
+  facet_grid(server ~ platform) +
+  theme_bw()
 
 jointModel <- dat |>
   filter(sha256_match) |>
-  mutate(erasure_strategy = str_c(erasure, strategy, sep = "_")) |>
-  mutate(erasure_strategy = fct_relevel(erasure_strategy, "NONE_NONE", "MEDIUM_DATA",
-                                        "MEDIUM_RACE", "INSANE_DATA", "INSANE_RACE")) |>
   mutate(log_size = log(size), log_time = log(time_sec)) |>
-  select(server | erasure_strategy | log_size | log_time) |>
-  lm(log_time ~ I(log_size^2) + server + erasure_strategy, data = _)
+  select(platform | server | log_size | log_time) |>
+  lm(log_time ~ I(log_size^2) + server + platform, data = _)
 
 jointModel |>
   autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.3, shape = 1) +
@@ -110,17 +105,11 @@ jointModel |>
 anova(jointModel)
 summary(jointModel)
 
-tibble(residuals = residuals(jointModel)) |>
-  ggplot(aes(x = residuals)) +
-  geom_histogram(color = "steelblue", fill = "steelblue", alpha = 0.2, bins = 30) +
-  theme_bw()
-
 dat |>
   filter(sha256_match) |>
-  mutate(erasure_strategy = str_c(erasure, strategy, sep = "_")) |>
   mutate(pred = predict(jointModel)) |>
   ggplot(aes(x = log(time_sec), y = pred,
-             color = erasure_strategy, size = log10(size))) +
+             color = platform, shape = server, size = log10(size))) +
   geom_abline(alpha = 0.5, linetype = "dashed") +
   geom_point(alpha = 0.75, shape = 1) +
   theme_bw()
@@ -128,24 +117,14 @@ dat |>
 dat |>
   filter(sha256_match) |>
   mutate(pred = exp(predict(jointModel))) |>
-  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
-  mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
-  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
-  ggplot(aes(x = size, color = strategy, fill = strategy)) +
-  geom_point(aes(y = time_sec), alpha = 0.5, shape = 1,
-             position = position_jitterdodge(jitter.width = 0.5)) +
-  geom_line(aes(y = pred), linewidth = 1) +
-  scale_x_log10(breaks = 10^(0:5),
+  ggplot(aes(x = size, y = time_sec)) +
+  geom_line(aes(y = pred), linewidth = 1, color = "steelblue") +
+  geom_point(alpha = 0.7, shape = 1, color = "steelblue",
+             position = position_jitter(width = 0.2, height = 0)) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
                 labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
-  scale_color_manual(values = c(NONE = "steelblue",
-                                DATA = "goldenrod",
-                                RACE = "forestgreen")) +
-  scale_fill_manual(values  = c(NONE = "steelblue",
-                                DATA = "goldenrod",
-                                RACE = "forestgreen")) +
-  labs(x = "File size", y = "Download time (seconds)",
-       color = "Retrieval strategy", fill = "Retrieval strategy") +
-  facet_grid(server ~ erasure) +
+  labs(x = "File size", y = "Download time (seconds)") +
+  facet_grid(server ~ platform) +
   theme_bw()
 
