@@ -92,39 +92,48 @@ dat |>
   facet_grid(server ~ platform) +
   theme_bw()
 
-jointModel <- dat |>
-  filter(sha256_match) |>
-  mutate(log_size = log(size), log_time = log(time_sec)) |>
-  select(platform | server | log_size | log_time) |>
-  lm(log_time ~ I(log_size^2) + server + platform, data = _)
 
-jointModel |>
-  autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.3, shape = 1) +
-  theme_bw()
+# Platform-specific models
 
-anova(jointModel)
-summary(jointModel)
+platformModel <- function(data, formula, platf) {
+  data |>
+    filter(sha256_match) |>
+    filter(platform == platf) |>
+    select(size | server | time_sec) |>
+    mutate(log_time = log(time_sec), log_size = log(size)) |>
+    lm(formula = formula, data = _)
+}
 
-dat |>
-  filter(sha256_match) |>
-  mutate(pred = predict(jointModel)) |>
-  ggplot(aes(x = log(time_sec), y = pred,
-             color = platform, shape = server, size = log10(size))) +
-  geom_abline(alpha = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.75, shape = 1) +
-  theme_bw()
+diagnose <- function(model, color = "steelblue", alpha = 0.3, ...) {
+  autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, ...) + theme_bw()
+}
 
-dat |>
-  filter(sha256_match) |>
-  mutate(pred = exp(predict(jointModel))) |>
-  ggplot(aes(x = size, y = time_sec)) +
-  geom_line(aes(y = pred), linewidth = 1, color = "steelblue") +
-  geom_point(alpha = 0.7, shape = 1, color = "steelblue",
-             position = position_jitter(width = 0.2, height = 0)) +
-  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
-                labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
-  scale_y_log10() +
-  labs(x = "File size", y = "Download time (seconds)") +
-  facet_grid(server ~ platform) +
-  theme_bw()
+plotPlatformModel <- function(data, model, platf) {
+  data |>
+    filter(sha256_match) |>
+    filter(platform == platf) |>
+    mutate(pred = exp(predict(model))) |>
+    ggplot(aes(x = size, y = time_sec)) +
+    geom_point(alpha = 0.7, shape = 1, color = "steelblue",
+               position = position_jitter(width = 0.1, height = 0, seed = 421)) +
+    geom_line(aes(y = pred), linewidth = 1, color = "goldenrod") +
+    scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
+                  labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
+    scale_y_log10() +
+    labs(x = "File size", y = "Download time (seconds)") +
+    facet_grid(. ~ server) +
+    theme_bw()
+}
 
+analyzeModel <- function(data, platform, formula = log_time ~ I(log_size^2) + server) {
+  model <- platformModel(data, formula, platform)
+  show(diagnose(model))
+  print(anova(model))
+  print(summary(model))
+  plotPlatformModel(data, model, platform)
+}
+
+
+analyzeModel(dat, "Arweave")
+analyzeModel(dat, "IPFS")
+analyzeModel(dat, "Swarm")

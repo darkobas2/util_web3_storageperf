@@ -86,7 +86,7 @@ dat |>
   scale_y_log10() +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
   scale_fill_manual(values = c("steelblue", "goldenrod")) +
-  labs(x = "File size", y = "Download time (seconds)", color = NULL) +
+  labs(x = "File size", y = "Download time (seconds)", color = NULL, fill = NULL) +
   facet_grid(. ~ server) +
   theme_bw() +
   theme(legend.position = "bottom")
