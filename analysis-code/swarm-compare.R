@@ -63,8 +63,9 @@ fitModel <- function(data, formula = log_time ~ I(log_size^2) + server) {
 }
 
 
-diagnose <- function(model, color = "steelblue", alpha = 0.3, ...) {
-  autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, ...) + theme_bw()
+diagnose <- function(model, color = "steelblue", alpha = 0.3, shape = 1, ...) {
+  autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, shape = shape) +
+    theme_bw()
 }
 
 
