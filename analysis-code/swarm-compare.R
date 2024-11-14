@@ -2,6 +2,7 @@ library(jsonlite)
 library(tidyverse)
 library(broom)
 library(ggfortify)
+library(ggbeeswarm)
 
 
 
@@ -55,6 +56,60 @@ prepareData <- function(jsonFile) {
 }
 
 
+fitModel <- function(data, formula = log_time ~ I(log_size^2) + server) {
+  data |>
+    mutate(log_time = log(time_sec), log_size = log(size)) |>
+    lm(formula = formula, data = _)
+}
+
+
+diagnose <- function(model, color = "steelblue", alpha = 0.3, ...) {
+  autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, ...) + theme_bw()
+}
+
+
+plotModel <- function(data, model) {
+  data |>
+    mutate(pred = exp(predict(model))) |>
+    ggplot(aes(x = size, y = time_sec)) +
+    geom_quasirandom(alpha = 0.8, color = "steelblue") +
+    geom_line(aes(y = pred), linewidth = 1, color = "goldenrod") +
+    scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
+                  labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
+    scale_y_log10(limits = c(0.08, 180)) +
+    labs(x = "File size", y = "Download time (seconds)") +
+    facet_grid(. ~ server) +
+    theme_bw()
+}
+
+
+fitPlotModel <- function(data, formula = log_time ~ I(log_size^2) + server) {
+  fitModel(data) |> plotModel(data = data) + ggtitle(data$set[1])
+}
+
+
+analyzeModel <- function(data, formula = log_time ~ I(log_size^2) + server) {
+  model <- fitModel(data, formula)
+  show(diagnose(model))
+  print(anova(model))
+  print(summary(model))
+  plotModel(data, model)
+}
+
+
+compareSims <- function(method) {
+  dat |>
+    mutate(log_time = log(time_sec)) |>
+    select(!time_sec) |>
+    nest(data = set | log_time) |>
+    mutate(test = map(data, \(x) method(log_time ~ set, data = x))) |>
+    mutate(test = map(test, tidy)) |>
+    unnest(test) |>
+    select(size | server | p.value) |>
+    arrange(p.value)
+}
+
+
 
 dat1 <-
   bind_rows(
@@ -94,8 +149,7 @@ dat |>
 dat |>
   mutate(set = fct_relevel(set, "Nov 6-7", "Nov 11")) |>
   ggplot(aes(x = size, y = time_sec, color = set)) +
-  geom_point(alpha = 0.5,
-             position = position_jitter(width = 0.2, height = 0)) +
+  geom_quasirandom(alpha = 0.5) +
   scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
                 labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
@@ -104,19 +158,6 @@ dat |>
   facet_grid(. ~ server) +
   theme_bw() +
   theme(legend.position = "bottom")
-
-
-compareSims <- function(method) {
-  dat |>
-    mutate(log_time = log(time_sec)) |>
-    select(!time_sec) |>
-    nest(data = set | log_time) |>
-    mutate(test = map(data, \(x) method(log_time ~ set, data = x))) |>
-    mutate(test = map(test, tidy)) |>
-    unnest(test) |>
-    select(size | server | p.value) |>
-    arrange(p.value)
-}
 
 
 compareSims(t.test) |> mutate(test = "t") |>
@@ -129,3 +170,17 @@ compareSims(t.test) |> mutate(test = "t") |>
     x < 0.05 ~ "*",
     TRUE ~ "-"
   )))
+
+
+dat |> filter(set == "Nov 6-7") |> fitModel() |> diagnose()
+dat |> filter(set == "Nov 11")  |> fitModel() |> diagnose()
+
+dat |> filter(set == "Nov 6-7") |> fitPlotModel()
+dat |> filter(set == "Nov 11")  |> fitPlotModel()
+
+dat |>
+  filter(set == "Nov 6-7") |> # Or "Nov 11"
+  #mutate(server = fct_relevel(server, "Server 2", "Server 1", "Server 3")) |>
+  fitModel() |>
+  summary() |>
+  tidy()
