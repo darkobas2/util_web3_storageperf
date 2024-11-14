@@ -91,8 +91,20 @@ ipfsModel <-
   mutate(logTime = log(time_sec), logSize2 = log(size)^2) |>
   lm(logTime ~ logSize2 * server, data = _)
 
-
-glance(ipfsModel)
-diagnose(ipfsModel)
-anova(ipfsModel)
-summary(ipfsModel)
+bind_rows(datSwarm, datIPFSArw) |>
+  distinct(platform, server, erasure, strategy) |>
+  crossing(logSize2 = log(10^seq(log10(1), log10(1e7), l = 201))^2) |>
+  (\(x) mutate(x, pred = case_when(
+    platform == "Arweave" ~ predict(arwModel, x),
+    platform == "IPFS" ~ predict(ipfsModel, x),
+    platform == "Swarm" ~ predict(swarmModel, x)
+  )))() |>
+  mutate(size = exp(sqrt(logSize2)), pred = exp(pred)) |>
+  #filter(size == max(size)) |>
+  #summarize(pred = mean(pred), .by = c(platform, erasure, strategy))
+  ggplot(aes(x = size, y = pred, linetype = as_factor(erasure), color = strategy)) +
+  geom_line() +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_grid(server ~ platform) +
+  theme_bw()
