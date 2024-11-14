@@ -44,8 +44,6 @@ dataFromJson <- function(rawTable) {
              strategy = dl_redundancy,
              erasure = ul_redundancy, .after = time_sec) |>
     mutate(strategy = case_match(strategy, 0 ~ "NONE", 1 ~ "DATA", 3 ~ "RACE")) |>
-    mutate(erasure = case_match(erasure, 0 ~ "NONE", 1 ~ "MEDIUM", 2 ~ "STRONG",
-                                3 ~ "INSANE", 4 ~ "PARANOID")) |>
     mutate(size = as.integer(size))
 }
 
@@ -82,11 +80,12 @@ dat0 |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 dat <-
   dat0 |>
   filter(sha256_match) |>
-  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
   mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
   arrange(server, erasure, strategy, size, time_sec)
 
 dat |>
+  mutate(erasure = case_match(erasure, 0 ~ "NONE", 1 ~ "MEDIUM", 3 ~ "INSANE")) |>
+  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
   mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
   ggplot(aes(x = as_factor(size), y = time_sec, color = strategy, fill = strategy)) +
   geom_boxplot(alpha = 0.3, coef = Inf) +
@@ -106,38 +105,21 @@ dat |>
 
 jointModel <-
   dat |>
-  mutate(erasure_strategy = str_c(erasure, strategy, sep = "_")) |>
-  mutate(erasure_strategy = fct_relevel(erasure_strategy, "NONE_NONE", "MEDIUM_DATA",
-                                        "MEDIUM_RACE", "INSANE_DATA", "INSANE_RACE")) |>
-  mutate(log_size = log(size), log_time = log(time_sec)) |>
-  select(server | erasure_strategy | log_size | log_time) |>
-  lm(log_time ~ I(log_size^2) + server + erasure_strategy, data = _)
+  mutate(logSize2 = log(size)^2, logTime = log(time_sec)) |>
+  select(platform | server | erasure | strategy | logSize2 | logTime) |>
+  lm(logTime ~ logSize2 + erasure + server + strategy + server:strategy +
+       logSize2:erasure + logSize2:server + logSize2:strategy, data = _)
 
+glance(jointModel)
 diagnose(jointModel)
 anova(jointModel)
 summary(jointModel)
 
-tibble(residuals = residuals(jointModel)) |>
-  ggplot(aes(x = residuals)) +
-  geom_histogram(color = "steelblue", fill = "steelblue", alpha = 0.2, bins = 30) +
-  theme_bw()
-
 dat |>
-  filter(sha256_match) |>
-  mutate(erasure_strategy = str_c(erasure, strategy, sep = "_")) |>
-  mutate(pred = predict(jointModel)) |>
-  ggplot(aes(x = log(time_sec), y = pred,
-             color = erasure_strategy, size = log10(size))) +
-  geom_abline(alpha = 0.5, linetype = "dashed") +
-  geom_point(alpha = 0.75, shape = 1) +
-  theme_bw()
-
-dat |>
-  filter(sha256_match) |>
   mutate(pred = exp(predict(jointModel))) |>
+  mutate(erasure = case_match(erasure, 0 ~ "NONE", 1 ~ "MEDIUM", 3 ~ "INSANE")) |>
   mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
   mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
-  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
   ggplot(aes(x = size, color = strategy, fill = strategy)) +
   geom_point(aes(y = time_sec), alpha = 0.5, shape = 1,
              position = position_jitterdodge(jitter.width = 0.5)) +
@@ -155,4 +137,3 @@ dat |>
        color = "Retrieval strategy", fill = "Retrieval strategy") +
   facet_grid(server ~ erasure) +
   theme_bw()
-
