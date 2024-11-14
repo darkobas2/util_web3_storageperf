@@ -55,8 +55,14 @@ prepareData <- function(jsonFile) {
 }
 
 
+diagnose <- function(model, color = "steelblue", alpha = 0.3, shape = 1, ...) {
+  autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, shape = shape) +
+    theme_bw()
+}
 
-dat <-
+
+
+dat0 <-
   bind_rows(
     prepareData("../data/results_onlyswarm_2024-11-06_19-08.json"),
     prepareData("../data/results_onlyswarm_2024-11-07_19-24.json")
@@ -65,19 +71,23 @@ dat <-
          time_sec, sha256_match, attempts)
 
 
-dat |> count(sha256_match)
-dat |> count(attempts)
-dat |> count(size)
-dat |> count(platform)
-dat |> count(server)
-dat |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
+dat0 |> count(sha256_match)
+dat0 |> count(attempts)
+dat0 |> filter(sha256_match) |> count(attempts)
+dat0 |> count(size)
+dat0 |> count(platform)
+dat0 |> count(server)
+dat0 |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 
-
-dat |>
+dat <-
+  dat0 |>
   filter(sha256_match) |>
   mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "INSANE")) |>
-  mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
   mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
+  arrange(server, erasure, strategy, size, time_sec)
+
+dat |>
+  mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
   ggplot(aes(x = as_factor(size), y = time_sec, color = strategy, fill = strategy)) +
   geom_boxplot(alpha = 0.3, coef = Inf) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
@@ -94,8 +104,8 @@ dat |>
   theme_bw()
 
 
-jointModel <- dat |>
-  filter(sha256_match) |>
+jointModel <-
+  dat |>
   mutate(erasure_strategy = str_c(erasure, strategy, sep = "_")) |>
   mutate(erasure_strategy = fct_relevel(erasure_strategy, "NONE_NONE", "MEDIUM_DATA",
                                         "MEDIUM_RACE", "INSANE_DATA", "INSANE_RACE")) |>
@@ -103,10 +113,7 @@ jointModel <- dat |>
   select(server | erasure_strategy | log_size | log_time) |>
   lm(log_time ~ I(log_size^2) + server + erasure_strategy, data = _)
 
-jointModel |>
-  autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.3, shape = 1) +
-  theme_bw()
-
+diagnose(jointModel)
 anova(jointModel)
 summary(jointModel)
 
