@@ -21,41 +21,206 @@ Assuming a single server, the above design leads to (6 filesizes) x (11 platform
 
 To summarize the experimental combinations we currently need to implement, here is a table of them assuming we are using 3 servers:
 
-|platform |erasure_coding |retrieval_strategy | server| replicates|
-|:--------|:--------------|:------------------|------:|----------:|
-|Arweave  |               |                   |      1|         30|
-|Arweave  |               |                   |      2|         30|
-|Arweave  |               |                   |      3|         30|
-|IPFS     |               |                   |      1|         30|
-|IPFS     |               |                   |      2|         30|
-|IPFS     |               |                   |      3|         30|
-|Swarm    |0              |NONE               |      1|         30|
-|Swarm    |0              |NONE               |      2|         30|
-|Swarm    |0              |NONE               |      3|         30|
-|Swarm    |1              |DATA               |      1|         30|
-|Swarm    |1              |DATA               |      2|         30|
-|Swarm    |1              |DATA               |      3|         30|
-|Swarm    |1              |RACE               |      1|         30|
-|Swarm    |1              |RACE               |      2|         30|
-|Swarm    |1              |RACE               |      3|         30|
-|Swarm    |2              |DATA               |      1|         30|
-|Swarm    |2              |DATA               |      2|         30|
-|Swarm    |2              |DATA               |      3|         30|
-|Swarm    |2              |RACE               |      1|         30|
-|Swarm    |2              |RACE               |      2|         30|
-|Swarm    |2              |RACE               |      3|         30|
-|Swarm    |3              |DATA               |      1|         30|
-|Swarm    |3              |DATA               |      2|         30|
-|Swarm    |3              |DATA               |      3|         30|
-|Swarm    |3              |RACE               |      1|         30|
-|Swarm    |3              |RACE               |      2|         30|
-|Swarm    |3              |RACE               |      3|         30|
-|Swarm    |4              |DATA               |      1|         30|
-|Swarm    |4              |DATA               |      2|         30|
-|Swarm    |4              |DATA               |      3|         30|
-|Swarm    |4              |RACE               |      1|         30|
-|Swarm    |4              |RACE               |      2|         30|
-|Swarm    |4              |RACE               |      3|         30|
+|platform |erasure coding |retrieval strategy | file size (KB)| server| replicates|
+|:--------|:--------------|:------------------|--------------:|------:|----------:|
+|Arweave  |               |                   |          1e+00|      1|         30|
+|Arweave  |               |                   |          1e+00|      2|         30|
+|Arweave  |               |                   |          1e+00|      3|         30|
+|Arweave  |               |                   |          1e+01|      1|         30|
+|Arweave  |               |                   |          1e+01|      2|         30|
+|Arweave  |               |                   |          1e+01|      3|         30|
+|Arweave  |               |                   |          1e+02|      1|         30|
+|Arweave  |               |                   |          1e+02|      2|         30|
+|Arweave  |               |                   |          1e+02|      3|         30|
+|Arweave  |               |                   |          1e+03|      1|         30|
+|Arweave  |               |                   |          1e+03|      2|         30|
+|Arweave  |               |                   |          1e+03|      3|         30|
+|Arweave  |               |                   |          1e+04|      1|         30|
+|Arweave  |               |                   |          1e+04|      2|         30|
+|Arweave  |               |                   |          1e+04|      3|         30|
+|Arweave  |               |                   |          1e+05|      1|         30|
+|Arweave  |               |                   |          1e+05|      2|         30|
+|Arweave  |               |                   |          1e+05|      3|         30|
+|IPFS     |               |                   |          1e+00|      1|         30|
+|IPFS     |               |                   |          1e+00|      2|         30|
+|IPFS     |               |                   |          1e+00|      3|         30|
+|IPFS     |               |                   |          1e+01|      1|         30|
+|IPFS     |               |                   |          1e+01|      2|         30|
+|IPFS     |               |                   |          1e+01|      3|         30|
+|IPFS     |               |                   |          1e+02|      1|         30|
+|IPFS     |               |                   |          1e+02|      2|         30|
+|IPFS     |               |                   |          1e+02|      3|         30|
+|IPFS     |               |                   |          1e+03|      1|         30|
+|IPFS     |               |                   |          1e+03|      2|         30|
+|IPFS     |               |                   |          1e+03|      3|         30|
+|IPFS     |               |                   |          1e+04|      1|         30|
+|IPFS     |               |                   |          1e+04|      2|         30|
+|IPFS     |               |                   |          1e+04|      3|         30|
+|IPFS     |               |                   |          1e+05|      1|         30|
+|IPFS     |               |                   |          1e+05|      2|         30|
+|IPFS     |               |                   |          1e+05|      3|         30|
+|Swarm    |0              |NONE               |          1e+00|      1|         30|
+|Swarm    |0              |NONE               |          1e+00|      2|         30|
+|Swarm    |0              |NONE               |          1e+00|      3|         30|
+|Swarm    |0              |NONE               |          1e+01|      1|         30|
+|Swarm    |0              |NONE               |          1e+01|      2|         30|
+|Swarm    |0              |NONE               |          1e+01|      3|         30|
+|Swarm    |0              |NONE               |          1e+02|      1|         30|
+|Swarm    |0              |NONE               |          1e+02|      2|         30|
+|Swarm    |0              |NONE               |          1e+02|      3|         30|
+|Swarm    |0              |NONE               |          1e+03|      1|         30|
+|Swarm    |0              |NONE               |          1e+03|      2|         30|
+|Swarm    |0              |NONE               |          1e+03|      3|         30|
+|Swarm    |0              |NONE               |          1e+04|      1|         30|
+|Swarm    |0              |NONE               |          1e+04|      2|         30|
+|Swarm    |0              |NONE               |          1e+04|      3|         30|
+|Swarm    |0              |NONE               |          1e+05|      1|         30|
+|Swarm    |0              |NONE               |          1e+05|      2|         30|
+|Swarm    |0              |NONE               |          1e+05|      3|         30|
+|Swarm    |1              |DATA               |          1e+00|      1|         30|
+|Swarm    |1              |DATA               |          1e+00|      2|         30|
+|Swarm    |1              |DATA               |          1e+00|      3|         30|
+|Swarm    |1              |DATA               |          1e+01|      1|         30|
+|Swarm    |1              |DATA               |          1e+01|      2|         30|
+|Swarm    |1              |DATA               |          1e+01|      3|         30|
+|Swarm    |1              |DATA               |          1e+02|      1|         30|
+|Swarm    |1              |DATA               |          1e+02|      2|         30|
+|Swarm    |1              |DATA               |          1e+02|      3|         30|
+|Swarm    |1              |DATA               |          1e+03|      1|         30|
+|Swarm    |1              |DATA               |          1e+03|      2|         30|
+|Swarm    |1              |DATA               |          1e+03|      3|         30|
+|Swarm    |1              |DATA               |          1e+04|      1|         30|
+|Swarm    |1              |DATA               |          1e+04|      2|         30|
+|Swarm    |1              |DATA               |          1e+04|      3|         30|
+|Swarm    |1              |DATA               |          1e+05|      1|         30|
+|Swarm    |1              |DATA               |          1e+05|      2|         30|
+|Swarm    |1              |DATA               |          1e+05|      3|         30|
+|Swarm    |1              |RACE               |          1e+00|      1|         30|
+|Swarm    |1              |RACE               |          1e+00|      2|         30|
+|Swarm    |1              |RACE               |          1e+00|      3|         30|
+|Swarm    |1              |RACE               |          1e+01|      1|         30|
+|Swarm    |1              |RACE               |          1e+01|      2|         30|
+|Swarm    |1              |RACE               |          1e+01|      3|         30|
+|Swarm    |1              |RACE               |          1e+02|      1|         30|
+|Swarm    |1              |RACE               |          1e+02|      2|         30|
+|Swarm    |1              |RACE               |          1e+02|      3|         30|
+|Swarm    |1              |RACE               |          1e+03|      1|         30|
+|Swarm    |1              |RACE               |          1e+03|      2|         30|
+|Swarm    |1              |RACE               |          1e+03|      3|         30|
+|Swarm    |1              |RACE               |          1e+04|      1|         30|
+|Swarm    |1              |RACE               |          1e+04|      2|         30|
+|Swarm    |1              |RACE               |          1e+04|      3|         30|
+|Swarm    |1              |RACE               |          1e+05|      1|         30|
+|Swarm    |1              |RACE               |          1e+05|      2|         30|
+|Swarm    |1              |RACE               |          1e+05|      3|         30|
+|Swarm    |2              |DATA               |          1e+00|      1|         30|
+|Swarm    |2              |DATA               |          1e+00|      2|         30|
+|Swarm    |2              |DATA               |          1e+00|      3|         30|
+|Swarm    |2              |DATA               |          1e+01|      1|         30|
+|Swarm    |2              |DATA               |          1e+01|      2|         30|
+|Swarm    |2              |DATA               |          1e+01|      3|         30|
+|Swarm    |2              |DATA               |          1e+02|      1|         30|
+|Swarm    |2              |DATA               |          1e+02|      2|         30|
+|Swarm    |2              |DATA               |          1e+02|      3|         30|
+|Swarm    |2              |DATA               |          1e+03|      1|         30|
+|Swarm    |2              |DATA               |          1e+03|      2|         30|
+|Swarm    |2              |DATA               |          1e+03|      3|         30|
+|Swarm    |2              |DATA               |          1e+04|      1|         30|
+|Swarm    |2              |DATA               |          1e+04|      2|         30|
+|Swarm    |2              |DATA               |          1e+04|      3|         30|
+|Swarm    |2              |DATA               |          1e+05|      1|         30|
+|Swarm    |2              |DATA               |          1e+05|      2|         30|
+|Swarm    |2              |DATA               |          1e+05|      3|         30|
+|Swarm    |2              |RACE               |          1e+00|      1|         30|
+|Swarm    |2              |RACE               |          1e+00|      2|         30|
+|Swarm    |2              |RACE               |          1e+00|      3|         30|
+|Swarm    |2              |RACE               |          1e+01|      1|         30|
+|Swarm    |2              |RACE               |          1e+01|      2|         30|
+|Swarm    |2              |RACE               |          1e+01|      3|         30|
+|Swarm    |2              |RACE               |          1e+02|      1|         30|
+|Swarm    |2              |RACE               |          1e+02|      2|         30|
+|Swarm    |2              |RACE               |          1e+02|      3|         30|
+|Swarm    |2              |RACE               |          1e+03|      1|         30|
+|Swarm    |2              |RACE               |          1e+03|      2|         30|
+|Swarm    |2              |RACE               |          1e+03|      3|         30|
+|Swarm    |2              |RACE               |          1e+04|      1|         30|
+|Swarm    |2              |RACE               |          1e+04|      2|         30|
+|Swarm    |2              |RACE               |          1e+04|      3|         30|
+|Swarm    |2              |RACE               |          1e+05|      1|         30|
+|Swarm    |2              |RACE               |          1e+05|      2|         30|
+|Swarm    |2              |RACE               |          1e+05|      3|         30|
+|Swarm    |3              |DATA               |          1e+00|      1|         30|
+|Swarm    |3              |DATA               |          1e+00|      2|         30|
+|Swarm    |3              |DATA               |          1e+00|      3|         30|
+|Swarm    |3              |DATA               |          1e+01|      1|         30|
+|Swarm    |3              |DATA               |          1e+01|      2|         30|
+|Swarm    |3              |DATA               |          1e+01|      3|         30|
+|Swarm    |3              |DATA               |          1e+02|      1|         30|
+|Swarm    |3              |DATA               |          1e+02|      2|         30|
+|Swarm    |3              |DATA               |          1e+02|      3|         30|
+|Swarm    |3              |DATA               |          1e+03|      1|         30|
+|Swarm    |3              |DATA               |          1e+03|      2|         30|
+|Swarm    |3              |DATA               |          1e+03|      3|         30|
+|Swarm    |3              |DATA               |          1e+04|      1|         30|
+|Swarm    |3              |DATA               |          1e+04|      2|         30|
+|Swarm    |3              |DATA               |          1e+04|      3|         30|
+|Swarm    |3              |DATA               |          1e+05|      1|         30|
+|Swarm    |3              |DATA               |          1e+05|      2|         30|
+|Swarm    |3              |DATA               |          1e+05|      3|         30|
+|Swarm    |3              |RACE               |          1e+00|      1|         30|
+|Swarm    |3              |RACE               |          1e+00|      2|         30|
+|Swarm    |3              |RACE               |          1e+00|      3|         30|
+|Swarm    |3              |RACE               |          1e+01|      1|         30|
+|Swarm    |3              |RACE               |          1e+01|      2|         30|
+|Swarm    |3              |RACE               |          1e+01|      3|         30|
+|Swarm    |3              |RACE               |          1e+02|      1|         30|
+|Swarm    |3              |RACE               |          1e+02|      2|         30|
+|Swarm    |3              |RACE               |          1e+02|      3|         30|
+|Swarm    |3              |RACE               |          1e+03|      1|         30|
+|Swarm    |3              |RACE               |          1e+03|      2|         30|
+|Swarm    |3              |RACE               |          1e+03|      3|         30|
+|Swarm    |3              |RACE               |          1e+04|      1|         30|
+|Swarm    |3              |RACE               |          1e+04|      2|         30|
+|Swarm    |3              |RACE               |          1e+04|      3|         30|
+|Swarm    |3              |RACE               |          1e+05|      1|         30|
+|Swarm    |3              |RACE               |          1e+05|      2|         30|
+|Swarm    |3              |RACE               |          1e+05|      3|         30|
+|Swarm    |4              |DATA               |          1e+00|      1|         30|
+|Swarm    |4              |DATA               |          1e+00|      2|         30|
+|Swarm    |4              |DATA               |          1e+00|      3|         30|
+|Swarm    |4              |DATA               |          1e+01|      1|         30|
+|Swarm    |4              |DATA               |          1e+01|      2|         30|
+|Swarm    |4              |DATA               |          1e+01|      3|         30|
+|Swarm    |4              |DATA               |          1e+02|      1|         30|
+|Swarm    |4              |DATA               |          1e+02|      2|         30|
+|Swarm    |4              |DATA               |          1e+02|      3|         30|
+|Swarm    |4              |DATA               |          1e+03|      1|         30|
+|Swarm    |4              |DATA               |          1e+03|      2|         30|
+|Swarm    |4              |DATA               |          1e+03|      3|         30|
+|Swarm    |4              |DATA               |          1e+04|      1|         30|
+|Swarm    |4              |DATA               |          1e+04|      2|         30|
+|Swarm    |4              |DATA               |          1e+04|      3|         30|
+|Swarm    |4              |DATA               |          1e+05|      1|         30|
+|Swarm    |4              |DATA               |          1e+05|      2|         30|
+|Swarm    |4              |DATA               |          1e+05|      3|         30|
+|Swarm    |4              |RACE               |          1e+00|      1|         30|
+|Swarm    |4              |RACE               |          1e+00|      2|         30|
+|Swarm    |4              |RACE               |          1e+00|      3|         30|
+|Swarm    |4              |RACE               |          1e+01|      1|         30|
+|Swarm    |4              |RACE               |          1e+01|      2|         30|
+|Swarm    |4              |RACE               |          1e+01|      3|         30|
+|Swarm    |4              |RACE               |          1e+02|      1|         30|
+|Swarm    |4              |RACE               |          1e+02|      2|         30|
+|Swarm    |4              |RACE               |          1e+02|      3|         30|
+|Swarm    |4              |RACE               |          1e+03|      1|         30|
+|Swarm    |4              |RACE               |          1e+03|      2|         30|
+|Swarm    |4              |RACE               |          1e+03|      3|         30|
+|Swarm    |4              |RACE               |          1e+04|      1|         30|
+|Swarm    |4              |RACE               |          1e+04|      2|         30|
+|Swarm    |4              |RACE               |          1e+04|      3|         30|
+|Swarm    |4              |RACE               |          1e+05|      1|         30|
+|Swarm    |4              |RACE               |          1e+05|      2|         30|
+|Swarm    |4              |RACE               |          1e+05|      3|         30|
 
 (The `replicates` column is simply a reminder that each of these rows is replicated 30 times with unique files.)
 
