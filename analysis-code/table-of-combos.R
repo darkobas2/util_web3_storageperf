@@ -30,4 +30,8 @@ arwIpfsCombos <-
   mutate(replicates = 30)
 
 bind_rows(arwIpfsCombos, swarmCombos) |>
+  mutate(platform = fct_relevel(platform, "Arweave", "IPFS", "Swarm")) |>
+  mutate(`file size (KB)` = fct_relevel(`file size (KB)`, "1", "10", "100", "1 000",
+                                        "10 000", "100 000")) |>
+  arrange(platform, `erasure coding`, `retrieval strategy`, `file size (KB)`, server) |>
   kable(align = "lrrrrr")
