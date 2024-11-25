@@ -19,6 +19,64 @@ We want to implement the speed comparison as a proper, repeatable, well-designed
 
 Assuming a single server, the above design leads to (6 filesizes) x (11 platforms) x (1 server) x (30 replicates) = 1980 unique download experiments. For *x* servers, we have 1980*x* experiments. So for 3 servers, that is 5940 measured downloads.
 
+### SWARM EC tests variations
+
+| `--size` | `--ul-redundancy` | `--dl-redundancy` |
+|---|---|---|
+| 100000 | 0 | 0 |
+| 10000 | 0 | 0 |
+| 1000 | 0 | 0 |
+| 100 | 0 | 0 |
+| 10 | 0 | 0 |
+| 1 | 0 | 0 |
+| 100000 | 1 | 1 |
+| 10000 | 1 | 1 |
+| 1000 | 1 | 1 |
+| 100 | 1 | 1 |
+| 10 | 1 | 1 |
+| 1 | 1 | 1 |
+| 100000 | 1 | 3 |
+| 10000 | 1 | 3 |
+| 1000 | 1 | 3 |
+| 100 | 1 | 3 |
+| 10 | 1 | 3 |
+| 1 | 1 | 3 |
+| 100000 | 2 | 1 |
+| 10000 | 2 | 1 |
+| 1000 | 2 | 1 |
+| 100 | 2 | 1 |
+| 10 | 2 | 1 |
+| 1 | 2 | 1 |
+| 100000 | 2 | 3 |
+| 10000 | 2 | 3 |
+| 1000 | 2 | 3 |
+| 100 | 2 | 3 |
+| 10 | 2 | 3 |
+| 1 | 2 | 3 |
+| 100000 | 3 | 1 |
+| 10000 | 3 | 1 |
+| 1000 | 3 | 1 |
+| 100 | 3 | 1 |
+| 10 | 3 | 1 |
+| 1 | 3 | 1 |
+| 100000 | 3 | 3 |
+| 10000 | 3 | 3 |
+| 1000 | 3 | 3 |
+| 100 | 3 | 3 |
+| 10 | 3 | 3 |
+| 1 | 3 | 3 |
+| 100000 | 4 | 1 |
+| 10000 | 4 | 1 |
+| 1000 | 4 | 1 |
+| 100 | 4 | 1 |
+| 10 | 4 | 1 |
+| 1 | 4 | 1 |
+| 100000 | 4 | 3 |
+| 10000 | 4 | 3 |
+| 1000 | 4 | 3 |
+| 100 | 4 | 3 |
+| 10 | 4 | 3 |
+| 1 | 4 | 3 |
 
 ### Notes and remarks on the design
 
