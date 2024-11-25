@@ -26,198 +26,198 @@ To summarize the experimental combinations we currently need to implement, here 
 |Arweave  |               |                   |              1|      1|         30|
 |Arweave  |               |                   |              1|      2|         30|
 |Arweave  |               |                   |              1|      3|         30|
-|Arweave  |               |                   |          1 000|      1|         30|
-|Arweave  |               |                   |          1 000|      2|         30|
-|Arweave  |               |                   |          1 000|      3|         30|
 |Arweave  |               |                   |             10|      1|         30|
 |Arweave  |               |                   |             10|      2|         30|
 |Arweave  |               |                   |             10|      3|         30|
-|Arweave  |               |                   |         10 000|      1|         30|
-|Arweave  |               |                   |         10 000|      2|         30|
-|Arweave  |               |                   |         10 000|      3|         30|
 |Arweave  |               |                   |            100|      1|         30|
 |Arweave  |               |                   |            100|      2|         30|
 |Arweave  |               |                   |            100|      3|         30|
+|Arweave  |               |                   |          1 000|      1|         30|
+|Arweave  |               |                   |          1 000|      2|         30|
+|Arweave  |               |                   |          1 000|      3|         30|
+|Arweave  |               |                   |         10 000|      1|         30|
+|Arweave  |               |                   |         10 000|      2|         30|
+|Arweave  |               |                   |         10 000|      3|         30|
 |Arweave  |               |                   |        100 000|      1|         30|
 |Arweave  |               |                   |        100 000|      2|         30|
 |Arweave  |               |                   |        100 000|      3|         30|
 |IPFS     |               |                   |              1|      1|         30|
 |IPFS     |               |                   |              1|      2|         30|
 |IPFS     |               |                   |              1|      3|         30|
-|IPFS     |               |                   |          1 000|      1|         30|
-|IPFS     |               |                   |          1 000|      2|         30|
-|IPFS     |               |                   |          1 000|      3|         30|
 |IPFS     |               |                   |             10|      1|         30|
 |IPFS     |               |                   |             10|      2|         30|
 |IPFS     |               |                   |             10|      3|         30|
-|IPFS     |               |                   |         10 000|      1|         30|
-|IPFS     |               |                   |         10 000|      2|         30|
-|IPFS     |               |                   |         10 000|      3|         30|
 |IPFS     |               |                   |            100|      1|         30|
 |IPFS     |               |                   |            100|      2|         30|
 |IPFS     |               |                   |            100|      3|         30|
+|IPFS     |               |                   |          1 000|      1|         30|
+|IPFS     |               |                   |          1 000|      2|         30|
+|IPFS     |               |                   |          1 000|      3|         30|
+|IPFS     |               |                   |         10 000|      1|         30|
+|IPFS     |               |                   |         10 000|      2|         30|
+|IPFS     |               |                   |         10 000|      3|         30|
 |IPFS     |               |                   |        100 000|      1|         30|
 |IPFS     |               |                   |        100 000|      2|         30|
 |IPFS     |               |                   |        100 000|      3|         30|
 |Swarm    |              0|               NONE|              1|      1|         30|
 |Swarm    |              0|               NONE|              1|      2|         30|
 |Swarm    |              0|               NONE|              1|      3|         30|
-|Swarm    |              0|               NONE|          1 000|      1|         30|
-|Swarm    |              0|               NONE|          1 000|      2|         30|
-|Swarm    |              0|               NONE|          1 000|      3|         30|
 |Swarm    |              0|               NONE|             10|      1|         30|
 |Swarm    |              0|               NONE|             10|      2|         30|
 |Swarm    |              0|               NONE|             10|      3|         30|
-|Swarm    |              0|               NONE|         10 000|      1|         30|
-|Swarm    |              0|               NONE|         10 000|      2|         30|
-|Swarm    |              0|               NONE|         10 000|      3|         30|
 |Swarm    |              0|               NONE|            100|      1|         30|
 |Swarm    |              0|               NONE|            100|      2|         30|
 |Swarm    |              0|               NONE|            100|      3|         30|
+|Swarm    |              0|               NONE|          1 000|      1|         30|
+|Swarm    |              0|               NONE|          1 000|      2|         30|
+|Swarm    |              0|               NONE|          1 000|      3|         30|
+|Swarm    |              0|               NONE|         10 000|      1|         30|
+|Swarm    |              0|               NONE|         10 000|      2|         30|
+|Swarm    |              0|               NONE|         10 000|      3|         30|
 |Swarm    |              0|               NONE|        100 000|      1|         30|
 |Swarm    |              0|               NONE|        100 000|      2|         30|
 |Swarm    |              0|               NONE|        100 000|      3|         30|
 |Swarm    |              1|               DATA|              1|      1|         30|
 |Swarm    |              1|               DATA|              1|      2|         30|
 |Swarm    |              1|               DATA|              1|      3|         30|
-|Swarm    |              1|               DATA|          1 000|      1|         30|
-|Swarm    |              1|               DATA|          1 000|      2|         30|
-|Swarm    |              1|               DATA|          1 000|      3|         30|
 |Swarm    |              1|               DATA|             10|      1|         30|
 |Swarm    |              1|               DATA|             10|      2|         30|
 |Swarm    |              1|               DATA|             10|      3|         30|
-|Swarm    |              1|               DATA|         10 000|      1|         30|
-|Swarm    |              1|               DATA|         10 000|      2|         30|
-|Swarm    |              1|               DATA|         10 000|      3|         30|
 |Swarm    |              1|               DATA|            100|      1|         30|
 |Swarm    |              1|               DATA|            100|      2|         30|
 |Swarm    |              1|               DATA|            100|      3|         30|
+|Swarm    |              1|               DATA|          1 000|      1|         30|
+|Swarm    |              1|               DATA|          1 000|      2|         30|
+|Swarm    |              1|               DATA|          1 000|      3|         30|
+|Swarm    |              1|               DATA|         10 000|      1|         30|
+|Swarm    |              1|               DATA|         10 000|      2|         30|
+|Swarm    |              1|               DATA|         10 000|      3|         30|
 |Swarm    |              1|               DATA|        100 000|      1|         30|
 |Swarm    |              1|               DATA|        100 000|      2|         30|
 |Swarm    |              1|               DATA|        100 000|      3|         30|
 |Swarm    |              1|               RACE|              1|      1|         30|
 |Swarm    |              1|               RACE|              1|      2|         30|
 |Swarm    |              1|               RACE|              1|      3|         30|
-|Swarm    |              1|               RACE|          1 000|      1|         30|
-|Swarm    |              1|               RACE|          1 000|      2|         30|
-|Swarm    |              1|               RACE|          1 000|      3|         30|
 |Swarm    |              1|               RACE|             10|      1|         30|
 |Swarm    |              1|               RACE|             10|      2|         30|
 |Swarm    |              1|               RACE|             10|      3|         30|
-|Swarm    |              1|               RACE|         10 000|      1|         30|
-|Swarm    |              1|               RACE|         10 000|      2|         30|
-|Swarm    |              1|               RACE|         10 000|      3|         30|
 |Swarm    |              1|               RACE|            100|      1|         30|
 |Swarm    |              1|               RACE|            100|      2|         30|
 |Swarm    |              1|               RACE|            100|      3|         30|
+|Swarm    |              1|               RACE|          1 000|      1|         30|
+|Swarm    |              1|               RACE|          1 000|      2|         30|
+|Swarm    |              1|               RACE|          1 000|      3|         30|
+|Swarm    |              1|               RACE|         10 000|      1|         30|
+|Swarm    |              1|               RACE|         10 000|      2|         30|
+|Swarm    |              1|               RACE|         10 000|      3|         30|
 |Swarm    |              1|               RACE|        100 000|      1|         30|
 |Swarm    |              1|               RACE|        100 000|      2|         30|
 |Swarm    |              1|               RACE|        100 000|      3|         30|
 |Swarm    |              2|               DATA|              1|      1|         30|
 |Swarm    |              2|               DATA|              1|      2|         30|
 |Swarm    |              2|               DATA|              1|      3|         30|
-|Swarm    |              2|               DATA|          1 000|      1|         30|
-|Swarm    |              2|               DATA|          1 000|      2|         30|
-|Swarm    |              2|               DATA|          1 000|      3|         30|
 |Swarm    |              2|               DATA|             10|      1|         30|
 |Swarm    |              2|               DATA|             10|      2|         30|
 |Swarm    |              2|               DATA|             10|      3|         30|
-|Swarm    |              2|               DATA|         10 000|      1|         30|
-|Swarm    |              2|               DATA|         10 000|      2|         30|
-|Swarm    |              2|               DATA|         10 000|      3|         30|
 |Swarm    |              2|               DATA|            100|      1|         30|
 |Swarm    |              2|               DATA|            100|      2|         30|
 |Swarm    |              2|               DATA|            100|      3|         30|
+|Swarm    |              2|               DATA|          1 000|      1|         30|
+|Swarm    |              2|               DATA|          1 000|      2|         30|
+|Swarm    |              2|               DATA|          1 000|      3|         30|
+|Swarm    |              2|               DATA|         10 000|      1|         30|
+|Swarm    |              2|               DATA|         10 000|      2|         30|
+|Swarm    |              2|               DATA|         10 000|      3|         30|
 |Swarm    |              2|               DATA|        100 000|      1|         30|
 |Swarm    |              2|               DATA|        100 000|      2|         30|
 |Swarm    |              2|               DATA|        100 000|      3|         30|
 |Swarm    |              2|               RACE|              1|      1|         30|
 |Swarm    |              2|               RACE|              1|      2|         30|
 |Swarm    |              2|               RACE|              1|      3|         30|
-|Swarm    |              2|               RACE|          1 000|      1|         30|
-|Swarm    |              2|               RACE|          1 000|      2|         30|
-|Swarm    |              2|               RACE|          1 000|      3|         30|
 |Swarm    |              2|               RACE|             10|      1|         30|
 |Swarm    |              2|               RACE|             10|      2|         30|
 |Swarm    |              2|               RACE|             10|      3|         30|
-|Swarm    |              2|               RACE|         10 000|      1|         30|
-|Swarm    |              2|               RACE|         10 000|      2|         30|
-|Swarm    |              2|               RACE|         10 000|      3|         30|
 |Swarm    |              2|               RACE|            100|      1|         30|
 |Swarm    |              2|               RACE|            100|      2|         30|
 |Swarm    |              2|               RACE|            100|      3|         30|
+|Swarm    |              2|               RACE|          1 000|      1|         30|
+|Swarm    |              2|               RACE|          1 000|      2|         30|
+|Swarm    |              2|               RACE|          1 000|      3|         30|
+|Swarm    |              2|               RACE|         10 000|      1|         30|
+|Swarm    |              2|               RACE|         10 000|      2|         30|
+|Swarm    |              2|               RACE|         10 000|      3|         30|
 |Swarm    |              2|               RACE|        100 000|      1|         30|
 |Swarm    |              2|               RACE|        100 000|      2|         30|
 |Swarm    |              2|               RACE|        100 000|      3|         30|
 |Swarm    |              3|               DATA|              1|      1|         30|
 |Swarm    |              3|               DATA|              1|      2|         30|
 |Swarm    |              3|               DATA|              1|      3|         30|
-|Swarm    |              3|               DATA|          1 000|      1|         30|
-|Swarm    |              3|               DATA|          1 000|      2|         30|
-|Swarm    |              3|               DATA|          1 000|      3|         30|
 |Swarm    |              3|               DATA|             10|      1|         30|
 |Swarm    |              3|               DATA|             10|      2|         30|
 |Swarm    |              3|               DATA|             10|      3|         30|
-|Swarm    |              3|               DATA|         10 000|      1|         30|
-|Swarm    |              3|               DATA|         10 000|      2|         30|
-|Swarm    |              3|               DATA|         10 000|      3|         30|
 |Swarm    |              3|               DATA|            100|      1|         30|
 |Swarm    |              3|               DATA|            100|      2|         30|
 |Swarm    |              3|               DATA|            100|      3|         30|
+|Swarm    |              3|               DATA|          1 000|      1|         30|
+|Swarm    |              3|               DATA|          1 000|      2|         30|
+|Swarm    |              3|               DATA|          1 000|      3|         30|
+|Swarm    |              3|               DATA|         10 000|      1|         30|
+|Swarm    |              3|               DATA|         10 000|      2|         30|
+|Swarm    |              3|               DATA|         10 000|      3|         30|
 |Swarm    |              3|               DATA|        100 000|      1|         30|
 |Swarm    |              3|               DATA|        100 000|      2|         30|
 |Swarm    |              3|               DATA|        100 000|      3|         30|
 |Swarm    |              3|               RACE|              1|      1|         30|
 |Swarm    |              3|               RACE|              1|      2|         30|
 |Swarm    |              3|               RACE|              1|      3|         30|
-|Swarm    |              3|               RACE|          1 000|      1|         30|
-|Swarm    |              3|               RACE|          1 000|      2|         30|
-|Swarm    |              3|               RACE|          1 000|      3|         30|
 |Swarm    |              3|               RACE|             10|      1|         30|
 |Swarm    |              3|               RACE|             10|      2|         30|
 |Swarm    |              3|               RACE|             10|      3|         30|
-|Swarm    |              3|               RACE|         10 000|      1|         30|
-|Swarm    |              3|               RACE|         10 000|      2|         30|
-|Swarm    |              3|               RACE|         10 000|      3|         30|
 |Swarm    |              3|               RACE|            100|      1|         30|
 |Swarm    |              3|               RACE|            100|      2|         30|
 |Swarm    |              3|               RACE|            100|      3|         30|
+|Swarm    |              3|               RACE|          1 000|      1|         30|
+|Swarm    |              3|               RACE|          1 000|      2|         30|
+|Swarm    |              3|               RACE|          1 000|      3|         30|
+|Swarm    |              3|               RACE|         10 000|      1|         30|
+|Swarm    |              3|               RACE|         10 000|      2|         30|
+|Swarm    |              3|               RACE|         10 000|      3|         30|
 |Swarm    |              3|               RACE|        100 000|      1|         30|
 |Swarm    |              3|               RACE|        100 000|      2|         30|
 |Swarm    |              3|               RACE|        100 000|      3|         30|
 |Swarm    |              4|               DATA|              1|      1|         30|
 |Swarm    |              4|               DATA|              1|      2|         30|
 |Swarm    |              4|               DATA|              1|      3|         30|
-|Swarm    |              4|               DATA|          1 000|      1|         30|
-|Swarm    |              4|               DATA|          1 000|      2|         30|
-|Swarm    |              4|               DATA|          1 000|      3|         30|
 |Swarm    |              4|               DATA|             10|      1|         30|
 |Swarm    |              4|               DATA|             10|      2|         30|
 |Swarm    |              4|               DATA|             10|      3|         30|
-|Swarm    |              4|               DATA|         10 000|      1|         30|
-|Swarm    |              4|               DATA|         10 000|      2|         30|
-|Swarm    |              4|               DATA|         10 000|      3|         30|
 |Swarm    |              4|               DATA|            100|      1|         30|
 |Swarm    |              4|               DATA|            100|      2|         30|
 |Swarm    |              4|               DATA|            100|      3|         30|
+|Swarm    |              4|               DATA|          1 000|      1|         30|
+|Swarm    |              4|               DATA|          1 000|      2|         30|
+|Swarm    |              4|               DATA|          1 000|      3|         30|
+|Swarm    |              4|               DATA|         10 000|      1|         30|
+|Swarm    |              4|               DATA|         10 000|      2|         30|
+|Swarm    |              4|               DATA|         10 000|      3|         30|
 |Swarm    |              4|               DATA|        100 000|      1|         30|
 |Swarm    |              4|               DATA|        100 000|      2|         30|
 |Swarm    |              4|               DATA|        100 000|      3|         30|
 |Swarm    |              4|               RACE|              1|      1|         30|
 |Swarm    |              4|               RACE|              1|      2|         30|
 |Swarm    |              4|               RACE|              1|      3|         30|
-|Swarm    |              4|               RACE|          1 000|      1|         30|
-|Swarm    |              4|               RACE|          1 000|      2|         30|
-|Swarm    |              4|               RACE|          1 000|      3|         30|
 |Swarm    |              4|               RACE|             10|      1|         30|
 |Swarm    |              4|               RACE|             10|      2|         30|
 |Swarm    |              4|               RACE|             10|      3|         30|
-|Swarm    |              4|               RACE|         10 000|      1|         30|
-|Swarm    |              4|               RACE|         10 000|      2|         30|
-|Swarm    |              4|               RACE|         10 000|      3|         30|
 |Swarm    |              4|               RACE|            100|      1|         30|
 |Swarm    |              4|               RACE|            100|      2|         30|
 |Swarm    |              4|               RACE|            100|      3|         30|
+|Swarm    |              4|               RACE|          1 000|      1|         30|
+|Swarm    |              4|               RACE|          1 000|      2|         30|
+|Swarm    |              4|               RACE|          1 000|      3|         30|
+|Swarm    |              4|               RACE|         10 000|      1|         30|
+|Swarm    |              4|               RACE|         10 000|      2|         30|
+|Swarm    |              4|               RACE|         10 000|      3|         30|
 |Swarm    |              4|               RACE|        100 000|      1|         30|
 |Swarm    |              4|               RACE|        100 000|      2|         30|
 |Swarm    |              4|               RACE|        100 000|      3|         30|
