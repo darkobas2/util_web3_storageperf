@@ -11,72 +11,54 @@ We want to implement the speed comparison as a proper, repeatable, well-designed
 - `platform`: Whether the target platform is IPFS, Swarm, or Arweave. Additionally, Swarm itself breaks up into several factors depending on:
   - the strength of erasure coding employed (`0` = None, `1` = Medium, `2` = Strong, `3` = Insane, and `4` = Paranoid);
   - whether there is a checkbook enabled to fund bandwidth incentives (`cb`) or there is no checkbook (`ncb`), although for now we are focusing solely on the `cb` option;
-  - the used redundancy strategy (out of all possibilities, we only use `NONE` and `RACE`). 
+  - the used redundancy strategy (we use `NONE` whenever erasure coding is set to 0; otherwise we use `DATA` and `RACE`).
 
-  Taken together, these lead to 11 distinct factor levels for `platform`, namely `IPFS`, `Arweave`, and all combinations of the above for Swarm: `Swarm_0_cb_NONE`, `Swarm_1_cb_NONE`, `Swarm_2_cb_NONE`, `Swarm_3_cb_NONE`, `Swarm_4_cb_NONE`, `Swarm_0_cb_RACE`, `Swarm_1_cb_RACE`, `Swarm_2_cb_RACE`, `Swarm_3_cb_RACE`, and `Swarm_4_cb_RACE`. (Note: eventually we might also have `nbc`-variants of all these, like `Swarm_0_ncb_NONE`, etc. For now we are not dealing with the checkbook though.)
-- `server`: The identity of the server initiating the downloads might influence download speeds. So a single server should be used for the experiment. If more than one server is used, then the experiment as a whole, with all other factors, should be repeated wholesale on the other server(s), and server identity should therefore be an extra experimental factor. So this is a factor with as many distinct levels as the number of servers used.
+  Taken together, these lead to 11 distinct factor levels for `platform`, namely `IPFS`, `Arweave`, and all combinations of the above for Swarm: `Swarm_0_cb_NONE`, `Swarm_1_cb_DATA`, `Swarm_2_cb_DATA`, `Swarm_3_cb_DATA`, `Swarm_4_cb_DATA`, `Swarm_1_cb_RACE`, `Swarm_2_cb_RACE`, `Swarm_3_cb_RACE`, and `Swarm_4_cb_RACE`. (Note: eventually we might also have `nbc`-variants of all these, like `Swarm_0_ncb_NONE`, etc. For now we are not dealing with the checkbook though.)
+- `server`: The identity of the server initiating the downloads might influence download speeds. So the experiment should be repeated on multiple different servers. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used.
 - `replicate`: To gain sufficient sample sizes for a proper statistical analysis, every single combination of the above factors should be replicated 30 times.
 
 Assuming a single server, the above design leads to (6 filesizes) x (11 platforms) x (1 server) x (30 replicates) = 1980 unique download experiments. For *x* servers, we have 1980*x* experiments. So for 3 servers, that is 5940 measured downloads.
 
-### SWARM EC tests variations
+To summarize the experimental combinations we currently need to implement, here is a table of them assuming we are using 3 servers:
 
-| `--size` | `--ul-redundancy` | `--dl-redundancy` |
-|---|---|---|
-| 100000 | 0 | 0 |
-| 10000 | 0 | 0 |
-| 1000 | 0 | 0 |
-| 100 | 0 | 0 |
-| 10 | 0 | 0 |
-| 1 | 0 | 0 |
-| 100000 | 1 | 1 |
-| 10000 | 1 | 1 |
-| 1000 | 1 | 1 |
-| 100 | 1 | 1 |
-| 10 | 1 | 1 |
-| 1 | 1 | 1 |
-| 100000 | 1 | 3 |
-| 10000 | 1 | 3 |
-| 1000 | 1 | 3 |
-| 100 | 1 | 3 |
-| 10 | 1 | 3 |
-| 1 | 1 | 3 |
-| 100000 | 2 | 1 |
-| 10000 | 2 | 1 |
-| 1000 | 2 | 1 |
-| 100 | 2 | 1 |
-| 10 | 2 | 1 |
-| 1 | 2 | 1 |
-| 100000 | 2 | 3 |
-| 10000 | 2 | 3 |
-| 1000 | 2 | 3 |
-| 100 | 2 | 3 |
-| 10 | 2 | 3 |
-| 1 | 2 | 3 |
-| 100000 | 3 | 1 |
-| 10000 | 3 | 1 |
-| 1000 | 3 | 1 |
-| 100 | 3 | 1 |
-| 10 | 3 | 1 |
-| 1 | 3 | 1 |
-| 100000 | 3 | 3 |
-| 10000 | 3 | 3 |
-| 1000 | 3 | 3 |
-| 100 | 3 | 3 |
-| 10 | 3 | 3 |
-| 1 | 3 | 3 |
-| 100000 | 4 | 1 |
-| 10000 | 4 | 1 |
-| 1000 | 4 | 1 |
-| 100 | 4 | 1 |
-| 10 | 4 | 1 |
-| 1 | 4 | 1 |
-| 100000 | 4 | 3 |
-| 10000 | 4 | 3 |
-| 1000 | 4 | 3 |
-| 100 | 4 | 3 |
-| 10 | 4 | 3 |
-| 1 | 4 | 3 |
+|platform |erasure_coding |retrieval_strategy | server| replicates|
+|:--------|:--------------|:------------------|------:|----------:|
+|Arweave  |               |                   |      1|         30|
+|Arweave  |               |                   |      2|         30|
+|Arweave  |               |                   |      3|         30|
+|IPFS     |               |                   |      1|         30|
+|IPFS     |               |                   |      2|         30|
+|IPFS     |               |                   |      3|         30|
+|Swarm    |0              |NONE               |      1|         30|
+|Swarm    |0              |NONE               |      2|         30|
+|Swarm    |0              |NONE               |      3|         30|
+|Swarm    |1              |DATA               |      1|         30|
+|Swarm    |1              |DATA               |      2|         30|
+|Swarm    |1              |DATA               |      3|         30|
+|Swarm    |1              |RACE               |      1|         30|
+|Swarm    |1              |RACE               |      2|         30|
+|Swarm    |1              |RACE               |      3|         30|
+|Swarm    |2              |DATA               |      1|         30|
+|Swarm    |2              |DATA               |      2|         30|
+|Swarm    |2              |DATA               |      3|         30|
+|Swarm    |2              |RACE               |      1|         30|
+|Swarm    |2              |RACE               |      2|         30|
+|Swarm    |2              |RACE               |      3|         30|
+|Swarm    |3              |DATA               |      1|         30|
+|Swarm    |3              |DATA               |      2|         30|
+|Swarm    |3              |DATA               |      3|         30|
+|Swarm    |3              |RACE               |      1|         30|
+|Swarm    |3              |RACE               |      2|         30|
+|Swarm    |3              |RACE               |      3|         30|
+|Swarm    |4              |DATA               |      1|         30|
+|Swarm    |4              |DATA               |      2|         30|
+|Swarm    |4              |DATA               |      3|         30|
+|Swarm    |4              |RACE               |      1|         30|
+|Swarm    |4              |RACE               |      2|         30|
+|Swarm    |4              |RACE               |      3|         30|
+
+(The `replicates` column is simply a reminder that each of these rows is replicated 30 times with unique files.)
+
 
 ### Notes and remarks on the design
 
