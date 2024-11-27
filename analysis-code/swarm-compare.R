@@ -175,13 +175,14 @@ compareSims(t.test) |> mutate(test = "t") |>
 
 dat |> filter(set == "Nov 6-7") |> fitModel() |> diagnose()
 dat |> filter(set == "Nov 11")  |> fitModel() |> diagnose()
+dat |> fitModel() |> diagnose()
 
 dat |> filter(set == "Nov 6-7") |> fitPlotModel()
 dat |> filter(set == "Nov 11")  |> fitPlotModel()
+dat |> fitPlotModel()
 
 dat |>
   filter(set == "Nov 6-7") |> # Or "Nov 11"
-  #mutate(server = fct_relevel(server, "Server 2", "Server 1", "Server 3")) |>
   fitModel() |>
   summary() |>
   tidy()

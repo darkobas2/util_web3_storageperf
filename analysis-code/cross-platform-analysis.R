@@ -3,69 +3,16 @@ library(tidyverse)
 library(broom)
 library(ggfortify)
 library(ggbeeswarm)
+library(lme4)
 
 
 
-serversFromConfig <- function(configFile = "../data/config.json") {
-  fromJSON(configFile) |>
-    as_tibble() |>
-    select(contains("dl")) |>
-    mutate(server = str_c("Server ", 1:3), .before = 1) |>
-    rename_with(\(x) str_remove(x, "_dl_servers"), !server) |>
-    pivot_longer(!server, names_to = "platform", values_to = "ip") |>
-    mutate(platform = case_match(
-      platform,
-      "swarm" ~ "Swarm",
-      "ipfs"  ~ "IPFS",
-      "arw"   ~ "Arweave"
-    ))
+cbPal <- function(k) { # Colorblind-friendly palette
+  c("#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#999999", "#D55E00")[k]
 }
 
 
-dataFromJsonRaw <- function(jsonFile) {
-  fromJSON(jsonFile) |>
-    as_tibble() |>
-    unnest(tests) |>
-    unnest(results) |>
-    rename(time_sec = download_time_seconds,
-           replicate = ref,
-           platform = storage)
-}
-
-
-dataFromJson <- function(rawTable) {
-  rawTable |>
-    mutate(sha256_match = (sha256_match == "true")) |>
-    select(!size_kb & !server & !timestamp) |>
-    mutate(platform = ifelse(platform == "Ipfs", "IPFS", platform)) |>
-    semi_join(serversFromConfig(), by = join_by(platform, ip)) |>
-    left_join(serversFromConfig(), by = join_by(platform, ip)) |>
-    relocate(size, server, time_sec, attempts, sha256_match, .after = platform) |>
-    relocate(timeout = `dl_retrieval-timeout`,
-             strategy = dl_redundancy,
-             erasure = ul_redundancy, .after = time_sec) |>
-    mutate(strategy = case_match(strategy, 0 ~ "NONE", 1 ~ "DATA", 3 ~ "RACE")) |>
-    mutate(erasure = case_match(erasure, 0 ~ "NONE", 1 ~ "MEDIUM", 2 ~ "STRONG",
-                                3 ~ "INSANE", 4 ~ "PARANOID")) |>
-    mutate(size = as.integer(size))
-}
-
-
-prepareData <- function(jsonFile) {
-  dataFromJson(dataFromJsonRaw(jsonFile))
-}
-
-
-# Platform-specific models
-
-fitModel <- function(data, formula = logTime ~ logSize2 * server) {
-  data |>
-    mutate(logTime = log(time_sec), logSize2 = log(size)^2) |>
-    lm(formula = formula, data = _)
-}
-
-
-diagnose <- function(model, color = "steelblue", alpha = 0.3, shape = 1, ...) {
+diagnose <- function(model, color = cbPal(1), alpha = 0.3, shape = 1, ...) {
   autoplot(model, smooth.colour = NA, colour = color, alpha = alpha, shape = shape) +
     theme_bw()
 }
@@ -75,8 +22,8 @@ plotModel <- function(data, model) {
   data |>
     mutate(pred = exp(predict(model))) |>
     ggplot(aes(x = size, y = time_sec)) +
-    geom_quasirandom(alpha = 0.8, color = "steelblue") +
-    geom_line(aes(y = pred), linewidth = 1, color = "goldenrod") +
+    geom_quasirandom(alpha = 0.8, color = cbPal(1)) +
+    geom_line(aes(y = pred), linewidth = 1, color = cbPal(2)) +
     scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
                   labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
     scale_y_log10() +
@@ -86,36 +33,12 @@ plotModel <- function(data, model) {
 }
 
 
-fitPlotModel <- function(data, formula = logTime ~ logSize2 * server) {
-  plotModel(fitModel(data), data = data)
-}
 
-
-
-dat0 <-
-  prepareData("../data/results_2024-11-11_14-19.json") |>
-  select(platform, size, server, erasure, strategy,
-         time_sec, sha256_match, attempts)
-
-dat0 |> count(sha256_match)
-dat0 |> count(attempts)
-dat0 |> filter(sha256_match) |> count(attempts)
-dat0 |> count(size)
-dat0 |> count(platform)
-dat0 |> count(server)
-dat0 |> count(erasure)
-dat0 |> count(strategy)
-dat0 |> count(platform, server, size) |> print(n = Inf)
-
-dat <-
-  dat0 |>
-  filter(sha256_match & platform != "Swarm") |>
-  select(platform, server, size, time_sec) |>
-  arrange(platform, server, size, time_sec)
+dat <- read_rds("../data/compiled-data.rds")
 
 dat |>
   ggplot(aes(x = as_factor(size), y = time_sec)) +
-  geom_boxplot(alpha = 0.3, coef = Inf, color = "steelblue", fill = "steelblue") +
+  geom_boxplot(alpha = 0.2, coef = Inf, color = cbPal(1), fill = cbPal(1)) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
   labs(x = "File size", y = "Download time (seconds)") +
@@ -123,14 +46,58 @@ dat |>
   theme_bw()
 
 dat |>
-  ggplot(aes(x = size, y = time_sec)) +
-  geom_quasirandom(alpha = 0.6, color = "steelblue") +
-  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000, 100000),
-                labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
+  filter(platform == "Swarm") |>
+  mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
+  ggplot(aes(x = as_factor(size), y = time_sec, color = strategy, fill = strategy)) +
+  geom_boxplot(alpha = 0.2, coef = Inf) +
+  scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
+  scale_color_manual(values = cbPal(1:2)) +
+  scale_fill_manual(values = cbPal(1:2)) +
   labs(x = "File size", y = "Download time (seconds)") +
-  facet_grid(server ~ platform) +
-  theme_bw()
+  facet_grid(server ~ erasure) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+dat |>
+  filter(platform == "Swarm") |>
+  mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
+  ggplot(aes(x = as_factor(size), y = time_sec, color = erasure, fill = erasure)) +
+  geom_boxplot(alpha = 0.2, coef = Inf) +
+  scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
+  scale_y_log10() +
+  scale_color_manual(values = cbPal(1:5)) +
+  scale_fill_manual(values = cbPal(1:5)) +
+  labs(x = "File size", y = "Download time (seconds)") +
+  facet_grid(server ~ strategy) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+
+modelSwarm <-
+  dat |>
+  filter(platform == "Swarm") |>
+  mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
+  mutate(erasure = case_match(
+    erasure,
+    "NONE"     ~ 0,
+    "MEDIUM"   ~ 9/128,
+    "STRONG"   ~ 21/128,
+    "INSANE"   ~ 31/128,
+    "PARANOID" ~ 90/128
+  )) |>
+  mutate(logSize2 = log(size)^2, logTime = log(time_sec)) |>
+  select(platform | server | erasure | strategy | logSize2 | logTime) |>
+  lmer(logTime ~ logSize2 + erasure + strategy +
+         logSize2:erasure + logSize2:strategy + erasure:strategy + (1|server), data = _)
+
+glance(modelSwarm)
+diagnose(modelSwarm)
+anova(modelSwarm)
+summary(modelSwarm)
+
+
+
 
 
 dat |> filter(platform == "Arweave") |> fitModel() |> diagnose()

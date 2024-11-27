@@ -60,7 +60,7 @@ dat0 <-
   mutate(data = map(file, prepareData)) |>
   unnest(data) |>
   select(file, platform, size, server, erasure, strategy,
-         time_sec, sha256_match, attempts)
+         time_sec, sha256_match, attempts, latitude, longitude)
 
 dat0 |> count(sha256_match)
 dat0 |> count(attempts)
@@ -73,6 +73,7 @@ dat0 |> count(strategy)
 dat0 |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 dat0 |> filter(erasure != "NONE" & strategy == "NONE")
 dat0 |> count(file) |> arrange(file)
+dat0 |> distinct(latitude, longitude)
 
 dat <-
   dat0 |>
