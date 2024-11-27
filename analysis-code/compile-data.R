@@ -43,7 +43,7 @@ dataFromJson <- function(rawTable) {
              erasure = ul_redundancy, .after = time_sec) |>
     mutate(strategy = case_match(strategy, 0 ~ "NONE", 1 ~ "DATA", 3 ~ "RACE")) |>
     mutate(erasure = case_match(erasure, 0 ~ "NONE", 1 ~ "MEDIUM", 2 ~ "STRONG",
-                                3 ~ "INSANE", 4 ~ "PARANOID")) |>
+                                3 ~ "INSANE", 4 ~ "PARANOID", NA ~ "NONE")) |>
     mutate(size = as.integer(size))
 }
 
@@ -56,9 +56,10 @@ prepareData <- function(jsonFile) {
 
 dat0 <-
   tibble(file = Sys.glob("../data/results*.json")) |>
+  filter(!str_detect(file, "-05")) |>
   mutate(data = map(file, prepareData)) |>
   unnest(data) |>
-  select(platform, size, server, erasure, strategy,
+  select(file, platform, size, server, erasure, strategy,
          time_sec, sha256_match, attempts)
 
 dat0 |> count(sha256_match)
@@ -68,18 +69,20 @@ dat0 |> count(size)
 dat0 |> count(platform)
 dat0 |> count(server)
 dat0 |> count(erasure)
-dat0 |> filter(is.na(erasure) & platform == "Swarm")
 dat0 |> count(strategy)
 dat0 |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
-dat0 |> filter(is.na(strategy)) |> print(n = Inf)
 dat0 |> filter(erasure != "NONE" & strategy == "NONE")
+dat0 |> count(file) |> arrange(file)
 
 dat <-
   dat0 |>
   filter(sha256_match) |>
-  filter(!is.na(strategy)) |> # Ask Marko!
-  filter(erasure == "NONE" | strategy != "NONE") |> # Also ask Marko!
   select(platform, server, size, erasure, strategy, time_sec) |>
+  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "STRONG",
+                               "INSANE", "PARANOID")) |>
+  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
   arrange(platform, server, size, erasure, strategy, time_sec)
+
+dat |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 
 write_rds(dat, "../data/compiled-data.rds", compress = "xz")
