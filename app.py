@@ -440,7 +440,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     storage = 'Arweave'
     server_loc = await get_ipinfo(get_ip_from_dns(url))
 
-    arw_file_manager = FileManager(api_url=url, wallet_path='./arw_wallet.json')
+    arw_file_manager = FileManager(gateways=url, wallet_path='./arw_wallet.json')
 
     initial_start_time = time.time()
 
@@ -581,7 +581,7 @@ async def main(args):
     repeat_count = args.repeat
     continuous = args.continuous
     results_by_storage = {"Swarm": [], "Ipfs": [], "Arweave": []}  # Initialize a dictionary to store results by storage
-    arw_file_manager = FileManager(api_url=arw_ul_server, wallet_path='./arw_wallet.json')
+    arw_file_manager = FileManager(gateways=arw_ul_server, wallet_path='./arw_wallet.json')
 
     PINATA_JWT = load_pinata_credentials()
     if not PINATA_JWT:
