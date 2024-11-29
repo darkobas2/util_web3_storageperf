@@ -5,6 +5,6 @@ ipinfo
 requests
 prometheus_client
 pycryptodome
-tempfile
 ritual_arweave
 pytz
+paramiko
