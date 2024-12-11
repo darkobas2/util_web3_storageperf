@@ -481,7 +481,7 @@ def upload_file(data, url_list):
     }
     url = f"https://{url_list[0]}"
 
-    response = requests.post(url=url, data=data, headers=headers, timeout=1000, stream=True)
+    response = requests.post(url=url, data=data, headers=headers, timeout=10000, stream=True)
     return response
 
 async def pin_json_to_ipfs(jwt, json_data, filename):
