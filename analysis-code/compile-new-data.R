@@ -53,12 +53,14 @@ prepareData <- function(jsonFile) {
 }
 
 
-
 dat0 <-
-  tibble(file = Sys.glob("../data/first-full-run-2024-Nov/results*.json")) |>
+  tibble(file = Sys.glob("../data/first-full-run-2024-Nov/results_2024*.json")) |>
   mutate(data = map(file, prepareData)) |>
   unnest(data) |>
-  select(file, platform, size, server, erasure, strategy,
+  filter(platform != "Swarm") |>
+  select(!file) |>
+  bind_rows(prepareData("../data/swarm-run-2024-Dec/results_onlyswarm.json")) |>
+  select(platform, size, server, erasure, strategy,
          time_sec, sha256_match, attempts, latitude, longitude)
 
 dat0 |> count(sha256_match)
@@ -71,7 +73,6 @@ dat0 |> count(erasure)
 dat0 |> count(strategy)
 dat0 |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 dat0 |> filter(erasure != "NONE" & strategy == "NONE")
-dat0 |> count(file) |> arrange(file)
 dat0 |> distinct(latitude, longitude)
 
 dat <-
@@ -85,4 +86,4 @@ dat <-
 
 dat |> count(platform, server, size, erasure, strategy) |> print(n = Inf)
 
-write_rds(dat, "../data/compiled-data.rds", compress = "xz")
+write_rds(dat, "../data/compiled-data-new.rds", compress = "xz")
