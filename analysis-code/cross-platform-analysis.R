@@ -19,7 +19,7 @@ diagnose <- function(model, color = cbPal(1), alpha = 0.3, shape = 1, ...) {
 
 
 
-dat <- read_rds("../data/compiled-data.rds")
+dat <- read_rds("../data/compiled-data-new.rds")
 
 dat |>
   ggplot(aes(x = as_factor(size), y = time_sec)) +
@@ -77,7 +77,7 @@ dat |>
   filter(server == "Server 3" & erasure == "NONE" & strategy == "NONE") |>
   ggplot(aes(x = log(size)^2, y = log(time_sec))) +
   geom_quasirandom(alpha = 0.2, color = cbPal(1)) +
-  geom_smooth() +
+  geom_smooth(method = lm) +
   theme_bw()
 
 modelSwarm <-
