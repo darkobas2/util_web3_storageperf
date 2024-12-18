@@ -87,14 +87,14 @@ modelSwarm <-
   mutate(erasure = case_match(
     erasure,
     "NONE"     ~ 0,
-    "MEDIUM"   ~ 0.01,
-    "STRONG"   ~ 0.05,
-    "INSANE"   ~ 0.1,
-    "PARANOID" ~ 0.5
+    "MEDIUM"   ~ 1,
+    "STRONG"   ~ 2,
+    "INSANE"   ~ 3,
+    "PARANOID" ~ 4
   )) |>
   glmer(time_sec ~ I(log(size)^2) + erasure + strategy +
           I(log(size)^2):erasure + I(log(size)^2):strategy +
-          erasure:strategy + (1 + erasure | server),
+          erasure:strategy + (1 + I(log(size)^2) + erasure | server),
         data = _, family = gaussian(link = "log")) |>
   (\(x) { print(glance(x)); x; } )()
 
