@@ -1,3 +1,5 @@
 config.json
 arw_wallet.json
 .pinata.key
+*_cache/
+*_files/
