@@ -2,6 +2,16 @@
 title: "Description and Analysis of the Web3 Storage Benchmarking Experiment"
 author: "György Barabás and Marko Zidarić"
 format:
+  pdf:
+    keep-tex: false
+    fontsize: 11pt
+    papersize: a4paper
+    margin-left: 1in
+    margin-right: 1in
+    margin-top: 1in
+    margin-bottom: 1in
+    code-block-border-left: false
+    number-sections: false
   html:
     theme: cosmo
     number-sections: false
@@ -28,6 +38,7 @@ library(knitr) # Neatly formatted tables (for output)
 library(jsonlite) # Converting JSON files to data frames
 library(tidyverse) # Efficient data manipulation and plotting
 library(lme4) # Fitting generalized linear mixed models
+library(ggbeeswarm) # Arrange data points to reflecting their distribution
 ```
 
 
@@ -43,48 +54,11 @@ Our goal was to implement this speed comparison as a proper, repeatable, well-de
     -   the strength of erasure coding employed (`0` = None, `1` = Medium, `2` = Strong, `3` = Insane, and `4` = Paranoid);
     -   the used redundancy strategy (we use `NONE` whenever erasure coding is set to 0; otherwise we use `DATA` and `RACE`).
 
-    Taken together, these lead to 11 distinct factor levels for `platform`, namely `Arweave`, `IPFS`, and all combinations of the above for Swarm: `Swarm_0_NONE`, `Swarm_1_DATA`, `Swarm_2_DATA`, `Swarm_3_DATA`, `Swarm_4_DATA`, `Swarm_1_RACE`, `Swarm_2_RACE`, `Swarm_3_RACE`, and `Swarm_4_RACE`.
+    Together, these lead to 11 distinct factor levels for `platform`, namely `Arweave`, `IPFS`, and all combinations of the above for Swarm: `Swarm_0_NONE`, `Swarm_1_DATA`, `Swarm_1_RACE`, `Swarm_2_DATA`, `Swarm_2_RACE`, `Swarm_3_DATA`, `Swarm_3_RACE`, `Swarm_4_DATA`, and `Swarm_4_RACE`.
 -   `server`: The identity of the server initiating the downloads might influence download speeds. For a fair comparison, servers should be identical within an experiment, but it makes sense to perform the whole experimental suite over multiple different servers---which is what we have done. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used. Here we have used three distinct servers.
 -   `replicate`: To gain sufficient sample sizes for proper statistical analysis, every single combination of the above factors was replicated 30 times. For example, given the unique combination of 1MB files uploaded to IPFS on Server 1, we actually up- and downloaded at least 30 such files (each uniquely and randomly generated, of course).
 
-The above design leads to (6 filesizes) x (11 platforms) x (3 servers) x (30 replicates) = 5940 unique download experiments. To summarize the experimental combinations, here they are in tabular form (the `replicates` column is simply a reminder that each of these rows is replicated 30 times with unique files):
-
-```{r}
-swarmComboTable <-
-  crossing(
-    platform = c("Swarm"),
-    `erasure coding` = as.character(0:4),
-    `retrieval strategy` = c("NONE", "DATA", "RACE"),
-    `file size (KB)` = c("1", "10", "100", "1 000", "10 000", "100 000"),
-    server = 1:3
-  ) |>
-  mutate(replicates = 30) |>
-  mutate(`retrieval strategy` = case_when(
-    platform == "Swarm" & `erasure coding` == "0" ~ "NONE",
-    platform != "Swarm"                         ~ NA,
-    TRUE                                        ~ `retrieval strategy`
-  )) |>
-  filter(`erasure coding` == "0" | `retrieval strategy` != "NONE") |>
-  distinct()
-
-arwIpfsComboTable <-
-  crossing(
-    platform = c("IPFS", "Arweave"),
-    `erasure coding` = "",
-    `retrieval strategy` = "",
-    `file size (KB)` = c("1", "10", "100", "1 000", "10 000", "100 000"),
-    server = 1:3
-  ) |>
-  mutate(replicates = 30)
-
-bind_rows(arwIpfsComboTable, swarmComboTable) |>
-  mutate(platform = fct_relevel(platform, "Arweave", "IPFS", "Swarm")) |>
-  mutate(`file size (KB)` = fct_relevel(`file size (KB)`, "1", "10", "100", "1 000",
-                                        "10 000", "100 000")) |>
-  arrange(platform, `erasure coding`, `retrieval strategy`, `file size (KB)`, server) |>
-  kable(align = "lrrrrr")
-```
-
+The above design leads to (6 filesizes) x (11 platforms) x (3 servers) x (30 replicates) = 5940 unique download experiments. They are summarized in tabular format as well in the README of the GitHub repository <https://github.com/darkobas2/util_web3_storageperf/tree/V2>.
 
 Additionally, here are some further notes and points about the experimental design outlined above:
 
@@ -218,7 +192,7 @@ After we load and compile the data, we get a table with 6966 rows and 8 columns.
 
 ```{r}
 dat0 |>
-  head() |>
+  head(n = 10) |>
   mutate(time_sec = round(time_sec, 4)) |>
   kable()
 ```
@@ -228,11 +202,12 @@ A quick note: we just calculated that the experimental design leads to 5940 down
 ```{r}
 dat0 |>
   filter(!sha256_match) |>
-  count(platform, server, size_kb, erasure, strategy) |>
+  count(platform, server, size_kb, erasure, strategy,
+        name = "number of fails") |>
   kable()
 ```
 
-On the other hand, all the other 6639 downloads succeeded, and all but of them on the first attempt. (One download of a 100 MB file on Arweave completed on the 8th attempt, and another 100 MB file on Swarm on the 9th.) Before analyzing the data, we remove the 327 failed downloads from the table and work only with the rest.
+On the other hand, all the other 6639 downloads succeeded, and all but two of them on the first attempt. (One download of a 100 MB file on Arweave completed on the 8th attempt, and another 100 MB file on Swarm on the 9th.) Before analyzing the data, we remove the 327 failed downloads from the table and work only with the rest.
 
 ```{r}
 dat <-
@@ -253,7 +228,7 @@ dat <-
 
 ## Visualizing and interpreting the raw data
 
-The data from the experiment are shown in @fig-empirical. We have a grid of panels, with 7 rows and 3 columns. The columns are the three different servers used for downloading. The rows indicate storage platform and level of erasure coding (if applicable). Within each panel, file size is along the x-axis and retrieval time along the y-axis, both on the log scale. Colors show retrieval strategies: when erasure coding is absent, blue means NONE, whereas in the presence of erasure coding, it means DATA. Yellow indicates the RACE strategy. Each point corresponds to one download event. The points have been jittered sideways to reduce visual overlap.
+The data from the experiment are shown in @fig-empirical. We have a grid of panels, with 7 rows and 3 columns. The columns are the three different servers used for downloading. The rows indicate storage platform and level of erasure coding (if applicable). Within each panel, file size is along the x-axis and retrieval time along the y-axis, both on the log scale. Colors show retrieval strategies: when erasure coding is absent, blue means NONE, whereas in the presence of erasure coding, it means DATA. Yellow indicates the RACE strategy. Each point corresponds to one download event. The points have been jittered sideways in a way that reflects the general shape of their distribution. This means that the only file sizes are 1 KB, 10 KB, 100 KB, 1 MB 10 MB, and 100 MB; points that do not fall at those sizes are jittered and so they still have one of these six sizes.
 
 ```{r}
 #| out-width: 100%
@@ -269,14 +244,11 @@ dat |>
     platform != "Swarm" ~ platform,
     TRUE                ~ str_c(platform, ", ", erasure)
   ))) |>
-  ggplot(aes(x = as_factor(size_kb), y = time_sec,
-             color = strategy, fill = strategy)) +
-  geom_point(alpha = 0.5, shape = 1,
-             position = position_jitter(height = 0, width = 0.2, seed = 1357)) +
+  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = strategy)) +
+  geom_quasirandom(alpha = 0.5, shape = 1) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
-  scale_fill_manual(values = c("steelblue", "goldenrod")) +
   labs(x = "File size", y = "Download time (seconds)",
        color = "Strategy: ", fill = "Strategy: ") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
@@ -301,10 +273,7 @@ We now turn to building simple predictive models for these data. Their purpose i
 
 We will build separate models for the three platforms. Since it is simpler, let us start with Arweave and IPFS, and then move on to Swarm.
 
-
-### Arweave and IPFS
-
-By looking at the data in @fig-empirical, we see that log download times increase nonlinearly with log file size. The relationship may be quadratic or cubic; here we assume it is cubic (this assumption does have limitations, as we will see later). To avoid bias arising from the fact that the log function compresses large values more than small values, we want to use a generalized linear model with a log link function to predict download times. Also, since the data come from three different servers, we will take the influence of server identity into account as a random effect. The model therefore reads
+**Arweave and IPFS** By looking at the data in @fig-empirical, we see that log download times increase nonlinearly with log file size. The relationship may be quadratic or cubic; here we assume it is cubic (this assumption does have limitations, as we will see later). To avoid bias arising from the fact that the log function compresses large values more than small values, we want to use a generalized linear model with a log link function to predict download times. Also, since the data come from three different servers, we will take the influence of server identity into account as a random effect. The model therefore reads
 $$
 (\text{time})_i
 = \exp\left[ \beta_0
@@ -313,10 +282,7 @@ $$
 $$ {#eq-model-ArwIPFS}
 Here $(\text{time})_i$ and $(\text{size})_i$ are respectively the $i$th download time (in seconds) and file size (in kilobytes) in the data, $\beta_0$ is an intercept, $\beta_1$ is a slope, and $\mu_{\text{v}(i)}$ is a random effect, where $\text{v}(i)$ returns 1, 2, or 3, depending on which server the $i$th data point was downloaded from.
 
-
-### Swarm
-
-Since Swarm additionally has erasure coding and different retrieval strategies, the fitted model is also more complex, although it is still a Gaussian generalized linear mixed model with a log-link function. It has the form
+**Swarm** Since Swarm additionally has erasure coding and different retrieval strategies, the fitted model is also more complex, although it is still a Gaussian generalized linear mixed model with a log-link function. It has the form
 $$
 \begin{aligned}
 (\text{time})_i
@@ -333,8 +299,6 @@ $$
 \end{aligned}
 $$ {#eq-model-Swarm}
 In words, we predict $\log(\text{time})$ using the main effects of $\log^2(\text{size})$, erasure level, and strategy, and all their possible two-way interactions. Plus we add a random intercept and slope (for both $\log^2(\text{size})$ and erasure level) based on server identity. In this model, erasure level is not a factor but a covariate reflecting the corresponding baseline probability of a faulty chunk retrieval event: it is taken as 0 for no erasure coding, as 1 for MEDIUM, 2 for STRONG, 3 for INSANE, and 4 for PARANOID. (Model selection indicated this as the best choice among a few other candidates, such as using the probability of individual chunk failure or using the fraction of chunks that are parity chunks.)
-
-Before doing anything else, let us confirm that the models do capture the data well. To do so, we plot the raw data (points) together with the model predictions (lines) in @fig-quality:
 
 ```{r}
 modelArweave <-
@@ -367,57 +331,55 @@ modelSwarm <-
         data = _, family = gaussian(link = "log"))
 ```
 
+Before doing anything else, let us confirm that the models do capture the data well. To do so, we plot the raw data (points) together with the model predictions (lines) in @fig-quality.
+
 ```{r}
+#| out-width: 100%
 #| fig-width: 8
-#| fig-height: 6
+#| fig-height: 10.5
+#| fig-cap: Data together with predictions from the fitted models
 #| label: fig-quality
 
 
 dat |>
-  mutate(strategy = as_factor(ifelse(strategy != "RACE",
-                                     "NONE/DATA", "RACE"))) |>
-  mutate(erasure = case_match(
-    erasure,
-    "NONE"     ~ 0,
-    "MEDIUM"   ~ 0.01,
-    "STRONG"   ~ 0.05,
-    "INSANE"   ~ 0.1,
-    "PARANOID" ~ 0.5
+  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+  mutate(pler = as_factor(case_when(
+    platform != "Swarm" ~ platform,
+    TRUE                ~ str_c(platform, ", ", erasure)
+  ))) |>
+  nest(data = !platform) |>
+  mutate(model = case_match(
+    platform,
+    "Arweave" ~ list(modelArweave),
+    "IPFS" ~ list(modelIPFS),
+    "Swarm" ~ list(modelSwarm)
   )) |>
-  distinct(platform, erasure, strategy) |>
-  crossing(size_kb= 10^seq(log10(1), log10(1e7), l = 201)) |>
-  (\(x) mutate(x, pred = case_when(
-    platform == "Arweave" ~ predict(modelArweave, x,
-                                    re.form = NA, type = "response"),
-    platform == "IPFS" ~ predict(modelIPFS, x,
-                                 re.form = NA, type = "response"),
-    platform == "Swarm" ~ predict(modelSwarm, x,
-                                  re.form = NA, type = "response")
-  )))() |>
-  mutate(erasure = as_factor(erasure)) |>
-  ggplot(aes(x = size_kb, y = pred, color = erasure, linetype = strategy,
-             group = str_c(platform, erasure, strategy))) +
-  geom_line() +
-  scale_x_log10() +
+  mutate(pred = map(model, \(model) predict(model, type = "response"))) |>
+  unnest(c(data, pred)) |>
+  ggplot(aes(x = size_kb, color = strategy)) +
+  geom_quasirandom(aes(y = time_sec), alpha = 0.5, shape = 1) +
+  geom_line(aes(y = pred), linewidth = 1) +
+  scale_x_log10(breaks = 10^(0:5),
+                labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
-  scale_color_viridis_d(option = "C", end = 0.8) +
-  annotate(geom = "text", label = "Arweave", x = 2e6, y = 9) +
-  annotate(geom = "text", label = "IPFS", x = 6e6, y = 700) +
-  annotate(geom = "text", label = "Swarm", x = 1e5, y = 900) +
-  labs(x = "File size (KB)", y = "Predicted download time (seconds)") +
-  theme_bw()
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  labs(x = "File size", y = "Download time (seconds)",
+       color = "Strategy: ", fill = "Strategy: ") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  facet_grid(pler ~ server) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
 
+The models generally fit well, though they are sometimes off at small file sizes. Note however that, since the y-axis is on the log scale, a difference that appears large at small download times is not actually a relevant difference. For example, the average download time for Swarm on Server 1 at PARANOID erasure and RACE strategy is 0.189 seconds. The model's prediction is 0.06 seconds which, although more than a threefold difference, is only 0.13 seconds off the empirically observed value.
 
-
-
-@fig-model shows model-predicted extrapolations made from the data, averaged over the random effects. As seen, on Swarm, RACE is on average not better than DATA for large files: the dashed lines lie above the solid ones for files over 1GB.
+Now that we have more confidence in the models, we can use them to make out-of-sample predictions. @fig-model shows model-predicted extrapolations made from the data, averaged over the random effects.
 
 ```{r}
 #| out-width: 75%
 #| fig-width: 6
 #| fig-height: 4
-#| fig-cap: Model-based predictions for mean file retrieval times. Here random effects are averaged over and therefore server identity no longer plays a role.
+#| fig-cap: Model-based predictions for mean file retrieval times. Random effects are averaged over, so server identity no longer plays a role.
 #| label: fig-model
 
 
@@ -459,7 +421,4 @@ dat |>
   theme_bw()
 ```
 
-Some further remarks:
-
--   The modeled curves for Arweave and IPFS eventually increase faster than the curves for Swarm. This would mean that for very large files, Swarm becomes the most efficient platform. This is definitely an artifact and reflects the limitations of the models that rely on the phenomenologically observed cubic relationship between log download time and log file size.
--   For large files, the RACE curves are slightly above DATA for Swarm. But since the y-axis is on the log scale, the actual difference is substantial. For example: for 10 GB files, the DATA strategy takes around 8 hours and the RACE strategy around 18 hours to download, with erasure levels playing only a minor role in shaping these figures.
+Three remarks about these results are in order. First of all, the modeled curves for Arweave and IPFS eventually increase faster than the curves for Swarm. This would mean that for very large files, Swarm becomes the most efficient platform. This is definitely an artifact and reflects the limitations of the models, rather than telling us something about how these systems work in reality. In particular, this is the result of having modeled Swarm with a quadratic and Arweave/IPFS with a cubic curve. Since cubic functions increase faster than quadratic ones for large arguments, the model's predictions will only be reliable up to some limited file size. Second, on Swarm and for large files, RACE is on average not a better retrieval strategy than DATA: the dashed lines lie above the solid ones for files over 1GB. And third, while for large files the RACE curves are only slightly above the DATA curves, one must remember that the y-axis is on the log scale. This means that the actual difference is substantial. For example: for 10 GB files, the DATA strategy takes around 8 hours and the RACE strategy around 18 hours to download, with erasure levels playing only a minor role in shaping these figures.
