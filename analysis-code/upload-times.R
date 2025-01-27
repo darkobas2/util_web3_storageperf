@@ -23,7 +23,7 @@ fileSizeFromJsonRaw <- function(jsonFile) {
 
 
 dat <-
-  tibble(file = Sys.glob("../references/references_onlyswarm_*2024-12-*.json")) |>
+  tibble(file = Sys.glob("../references/swarm-run-2024-dec/*.json")) |>
   mutate(size_kb = map_int(file, fileSizeFromJsonRaw)) |>
   mutate(data = map(file, dataFromJsonRaw)) |>
   unnest(data) |>
