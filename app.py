@@ -477,7 +477,8 @@ def upload_file(data, url_list):
         "Content-Type": "application/x-bin",
         "swarm-redundancy-level": str(args.ul_redundancy),
         "swarm-cache": "false",
-        "swarm-postage-batch-id": swarm_batch_id
+        "swarm-postage-batch-id": swarm_batch_id,
+        "swarm-deferred-upload": "False"
     }
     url = f"https://{url_list[0]}"
 
