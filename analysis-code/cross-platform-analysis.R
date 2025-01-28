@@ -19,10 +19,21 @@ diagnose <- function(model, color = cbPal(1), alpha = 0.3, shape = 1, ...) {
 
 
 
-dat <- read_rds("../data/compiled-data-new.rds")
+dat <-
+  read_rds("../data/arweave-2024-11/arweave.rds") |>
+  bind_rows(read_rds("../data/ipfs-2024-11/ipfs.rds")) |>
+  bind_rows(read_rds("../data/swarm-2025-01/swarm.rds")) |>
+  filter(sha256_match) |>
+  select(!sha256_match & !attempts) |>
+  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "STRONG",
+                               "INSANE", "PARANOID")) |>
+  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
+  arrange(platform, erasure, strategy, size_kb, server)
+
+
 
 dat |>
-  ggplot(aes(x = as_factor(size), y = time_sec)) +
+  ggplot(aes(x = as_factor(size_kb), y = time_sec)) +
   geom_boxplot(alpha = 0.2, coef = Inf, color = cbPal(1), fill = cbPal(1)) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
@@ -36,7 +47,7 @@ dat |>
 dat |>
   filter(platform == "Swarm") |>
   mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
-  ggplot(aes(x = as_factor(size), y = time_sec, color = strategy, fill = strategy)) +
+  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = strategy, fill = strategy)) +
   geom_boxplot(alpha = 0.2, coef = Inf) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
@@ -50,7 +61,7 @@ dat |>
 dat |>
   filter(platform == "Swarm") |>
   mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
-  ggplot(aes(x = as_factor(size), y = time_sec, color = erasure, fill = erasure)) +
+  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = erasure, fill = erasure)) +
   geom_boxplot(alpha = 0.2, coef = Inf) +
   scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
   scale_y_log10() +
@@ -64,7 +75,7 @@ dat |>
 dat |>
   filter(platform == "Swarm") |>
   mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
-  ggplot(aes(x = log(size)^2, y = log(time_sec), color = server)) +
+  ggplot(aes(x = log(size_kb)^2, y = log(time_sec), color = server)) +
   geom_quasirandom(alpha = 0.2) +
   geom_smooth(method = lm, se = FALSE) +
   scale_color_manual(values = cbPal(1:3)) +
@@ -75,7 +86,7 @@ dat |>
 dat |>
   filter(platform == "Swarm") |>
   filter(server == "Server 3" & erasure == "NONE" & strategy == "NONE") |>
-  ggplot(aes(x = log(size)^2, y = log(time_sec))) +
+  ggplot(aes(x = log(size_kb)^2, y = log(time_sec))) +
   geom_quasirandom(alpha = 0.2, color = cbPal(1)) +
   geom_smooth(method = lm) +
   theme_bw()
@@ -92,9 +103,9 @@ modelSwarm <-
     "INSANE"   ~ 3,
     "PARANOID" ~ 4
   )) |>
-  glmer(time_sec ~ I(log(size)^2) + erasure + strategy +
-          I(log(size)^2):erasure + I(log(size)^2):strategy +
-          erasure:strategy + (1 + I(log(size)^2) + erasure | server),
+  glmer(time_sec ~ I(log(size_kb)^2) + erasure + strategy +
+          I(log(size_kb)^2):erasure + I(log(size_kb)^2):strategy +
+          erasure:strategy + (1 + I(log(size_kb)^2) + erasure | server),
         data = _, family = gaussian(link = "log")) |>
   (\(x) { print(glance(x)); x; } )()
 
@@ -103,7 +114,7 @@ dat |>
   mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
   mutate(pred = predict(modelSwarm, type = "response")) |>
   mutate(erasure = fct_relabel(erasure, \(x) str_c("Erasure level: ", x))) |>
-  ggplot(aes(x = size, color = strategy, fill = strategy)) +
+  ggplot(aes(x = size_kb, color = strategy, fill = strategy)) +
   geom_quasirandom(aes(y = time_sec), alpha = 0.5, shape = 1) +
   geom_line(aes(y = pred), linewidth = 1) +
   scale_x_log10(breaks = 10^(0:5),
@@ -124,7 +135,7 @@ summary(modelSwarm)
 
 dat |>
   filter(platform == "IPFS") |>
-  ggplot(aes(x = log(size)^3, y = log(time_sec), color = server)) +
+  ggplot(aes(x = log(size_kb)^3, y = log(time_sec), color = server)) +
   geom_quasirandom(alpha = 0.4) +
   geom_smooth(method = lm, se = FALSE) +
   scale_color_manual(values = cbPal(1:3)) +
@@ -133,14 +144,14 @@ dat |>
 modelIPFS <-
   dat |>
   filter(platform == "IPFS") |>
-  glmer(time_sec ~ I(log(size)^3) + (1 + I(log(size)^3) | server),
+  glmer(time_sec ~ I(log(size_kb)^3) + (1 + I(log(size_kb)^3) | server),
         data = _, family = gaussian(link = "log")) |>
   (\(x) { print(glance(x)); x; } )()
 
 dat |>
   filter(platform == "IPFS") |>
   mutate(pred = predict(modelIPFS, type = "response")) |>
-  ggplot(aes(x = size, y = time_sec, color = server)) +
+  ggplot(aes(x = size_kb, y = time_sec, color = server)) +
   geom_quasirandom(alpha = 0.4) +
   geom_line(aes(y = pred), linewidth = 1) +
   scale_color_manual(values = cbPal(1:3)) +
@@ -156,7 +167,7 @@ summary(modelIPFS)
 
 dat |>
   filter(platform == "Arweave") |>
-  ggplot(aes(x = log(size)^3, y = log(time_sec), color = server)) +
+  ggplot(aes(x = log(size_kb)^3, y = log(time_sec), color = server)) +
   geom_quasirandom(alpha = 0.4) +
   geom_smooth(method = lm, se = FALSE) +
   scale_color_manual(values = cbPal(1:3)) +
@@ -165,14 +176,14 @@ dat |>
 modelArweave <-
   dat |>
   filter(platform == "Arweave") |>
-  glmer(time_sec ~ I(log(size)^3) + (1 + I(log(size)^3) | server),
+  glmer(time_sec ~ I(log(size_kb)^3) + (1 + I(log(size_kb)^3) | server),
         data = _, family = gaussian(link = "log")) |>
   (\(x) { print(glance(x)); x; } )()
 
 dat |>
   filter(platform == "Arweave") |>
   mutate(pred = predict(modelArweave, type = "response")) |>
-  ggplot(aes(x = size, y = time_sec, color = server)) +
+  ggplot(aes(x = size_kb, y = time_sec, color = server)) +
   geom_quasirandom(alpha = 0.4) +
   geom_line(aes(y = pred), linewidth = 1) +
   scale_color_manual(values = cbPal(1:3)) +
@@ -197,14 +208,14 @@ dat |>
     "PARANOID" ~ 0.5
   )) |>
   distinct(platform, erasure, strategy) |>
-  crossing(size = 10^seq(log10(1), log10(1e7), l = 201)) |>
+  crossing(size_kb = 10^seq(log10(1), log10(1e7), l = 201)) |>
   (\(x) mutate(x, pred = case_when(
     platform == "Arweave" ~ predict(modelArweave, x, re.form = NA, type = "response"),
     platform == "IPFS" ~ predict(modelIPFS, x, re.form = NA, type = "response"),
     platform == "Swarm" ~ predict(modelSwarm, x, re.form = NA, type = "response")
   )))() |>
   mutate(erasure = as_factor(erasure)) |>
-  ggplot(aes(x = size, y = pred, color = erasure, linetype = strategy,
+  ggplot(aes(x = size_kb, y = pred, color = erasure, linetype = strategy,
              group = str_c(platform, erasure, strategy))) +
   geom_line() +
   scale_x_log10() +
@@ -228,14 +239,14 @@ dat |>
     "PARANOID" ~ 0.5
   )) |>
   distinct(platform, erasure, strategy) |>
-  crossing(size = 10^seq(log10(1), log10(1e7), l = 201)) |>
+  crossing(size_kb = 10^seq(log10(1), log10(1e7), l = 201)) |>
   (\(x) mutate(x, pred = case_when(
     platform == "Arweave" ~ predict(modelArweave, x, re.form = NA, type = "response"),
     platform == "IPFS" ~ predict(modelIPFS, x, re.form = NA, type = "response"),
     platform == "Swarm" ~ predict(modelSwarm, x, re.form = NA, type = "response")
   )))() |>
   mutate(erasure = as_factor(erasure)) |>
-  ggplot(aes(x = size, y = pred, color = erasure, linetype = strategy,
+  ggplot(aes(x = size_kb, y = pred, color = erasure, linetype = strategy,
              group = str_c(platform, erasure, strategy))) +
   geom_line() +
   scale_color_viridis_d(option = "C", end = 0.8) +
