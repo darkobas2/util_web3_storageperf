@@ -107,7 +107,7 @@ path <- "../data/swarm-2025-01/"
 
 dat <-
   tibble(file = Sys.glob(str_c(path, "results_onlyswarm*.json"))) |>
-  mutate(conf = path_dir(file) |> str_c("/config.json")) |>
+  mutate(conf = "../data/config.json") |>
   mutate(data = map2(file, conf, prepareData)) |>
   unnest(data) |>
   select(!file & !conf) |>
