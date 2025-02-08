@@ -1,10 +1,11 @@
 ---
-title: "Description and Analysis of the Web3 Storage Benchmarking Experiment"
+title: "Data from the Web3 Storage Benchmarking Experiment"
 author: "György Barabás and Marko Zidarić"
 format:
   pdf:
     keep-tex: false
     fontsize: 11pt
+    documentclass: article
     papersize: a4paper
     margin-left: 1in
     margin-right: 1in
@@ -24,6 +25,8 @@ knitr:
     message: false
     warning: false
     fig-align: center
+    R.options:
+      knitr.kable.NA: ""
 execute: 
   cache: false
 editor_options: 
@@ -37,8 +40,8 @@ latex-tinytex: false
 library(knitr) # Neatly formatted tables (for output)
 library(jsonlite) # Converting JSON files to data frames
 library(tidyverse) # Efficient data manipulation and plotting
-library(lme4) # Fitting generalized linear mixed models
 library(ggbeeswarm) # Arrange data points to reflecting their distribution
+library(kableExtra) # Neat tables
 ```
 
 
@@ -82,33 +85,43 @@ dat0 <-
   bind_rows(read_rds("../data/swarm-2025-01/swarm.rds"))
 ```
 
-After we load and compile the data, we get a table with 7293 rows and 8 columns. Each row corresponds to a single download. The first ten rows are:
+After we load and compile the data, we get a table with 7293 rows and 8 columns where each row corresponds to a single download. A quick note: we just calculated that the experimental design leads to somewhat fewer than 6930 downloads, yet here we have 7293 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. @tbl-fails shows how these failures are distributed across the various parameterizations.
 
 ```{r}
-dat0 |>
-  head(n = 10) |>
-  mutate(time_sec = round(time_sec, 4)) |>
-  kable()
-```
+#| tbl-cap: Failed download attempts.
+#| tbl-cap-location: bottom
+#| label: tbl-fails
 
-A quick note: we just calculated that the experimental design leads to somewhat fewer than 6930 downloads, yet here we have 7293 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. This is how these failures are distributed across the parameterizations:
-
-```{r}
 dat0 |>
   filter(!sha256_match) |>
-  count(platform, server, size_kb, erasure, strategy,
+  mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
+                           10000~"10MB", 100000~"100MB", 500000~"500MB")) |>
+  count(platform, server, size, erasure, strategy,
         name = "number of fails") |>
-  kable()
+  kbl(booktabs = TRUE, linesep = "") |>
+  kable_styling(latex_options = c("striped")) |>
+  column_spec(1:6, monospace = TRUE) |>
+  row_spec(0, monospace = TRUE)
 ```
 
-On the other hand, all the other 7017 downloads succeeded, and all but four of them on the first attempt. For reference, here are the data for these four downloads:
+On the other hand, all the other 7017 downloads succeeded, and all but four of them on the first attempt. For reference, here are the data for these four downloads, in @tbl-attempts.
 
 ```{r}
+#| tbl-cap: Downloads that succeeded, but not on the first attempt.
+#| tbl-cap-location: bottom
+#| label: tbl-attempts
+
 dat0 |>
   filter(attempts > 1 & attempts < 15) |>
   mutate(time_sec = round(time_sec, 1)) |>
   select(!sha256_match) |>
-  kable()
+  mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
+                           10000~"10MB", 100000~"100MB", 500000~"500MB"),
+         .after = "size_kb", .keep = "unused") |>
+  kbl(booktabs = TRUE, linesep = "") |>
+  kable_styling(latex_options = c("striped")) |>
+  column_spec(1:7, monospace = TRUE) |>
+  row_spec(0, monospace = TRUE)
 ```
 
 Before analyzing the data, we remove the 276 failed downloads from the table and work only with the rest.
@@ -130,7 +143,7 @@ dat <-
 
 
 
-## Visualizing and interpreting the raw download data
+## Download times
 
 The data from the experiment are shown in @fig-empirical. We have a grid of panels, with 7 rows and 3 columns. The columns are the three different servers used for downloading. The rows indicate storage platform and level of erasure coding (if applicable). Within each panel, file size is along the x-axis and retrieval time along the y-axis, both on the log scale. Colors show retrieval strategies: when erasure coding is absent, blue means NONE, whereas in the presence of erasure coding, it means DATA. Yellow indicates the RACE strategy. Each point corresponds to one download event. The points have been jittered sideways in a way that reflects the general shape of their distribution. This is just for visual help; the only possible file sizes are still 1 KB, 10 KB, 100 KB, 1 MB 10 MB, 100 MB, and 500 MB.
 
@@ -171,13 +184,54 @@ Some important take-aways from this figure:
 -   The level of erasure coding does not appear to have much of an effect on download speeds, at least for very small and large files.
 -   The DATA and RACE retrieval strategies do lead to differences. For small files RACE is faster; for larger files, sometimes RACE is faster, sometimes DATA.
 
+To make the figure easier to work with, here are its results in the form of tables as well. @tbl-mean shows the mean download times for each combination of platform, erasure level, download strategy, and file size (data are averaged over the three different servers). @tbl-iqr is structured similarly, but shows a measure of how variable the data are around the mean, in stead of the mean download times themselves.
+
+```{r}
+downloadTab <-
+  dat |>
+  mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
+                           10000~"10MB", 100000~"100MB", 500000~"500MB")) |>
+  summarize(mean = round(mean(time_sec), 2),
+            IQR = round(IQR(time_sec), 2),
+            .by = c(platform, size, erasure, strategy)) |>
+  pivot_wider(names_from = size, values_from = c(mean, IQR)) |>
+  mutate(erasure = ifelse(platform == "Swarm", as.character(erasure), NA)) |>
+  mutate(strategy = ifelse(platform == "Swarm", as.character(strategy), NA))
+```
+
+```{r}
+#| tbl-cap: Mean download times in seconds (last seven columns) for each platform, erasure level, and download strategy (first three columns). The seven columns with the mean download times correspond to distinct file sizes. Data have been averaged over different servers.
+#| tbl-cap-location: bottom
+#| label: tbl-mean
+
+downloadTab |>
+  select(!starts_with("IQR")) |>
+  rename_with(\(x) str_remove(x, "mean_"), .cols = starts_with("mean")) |>
+  kbl(booktabs = TRUE, linesep = c("", "\\addlinespace", rep("", 9))) |>
+  kable_styling(latex_options = c("striped")) |>
+  column_spec(1:10, monospace = TRUE) |>
+  row_spec(0, monospace = TRUE)
+```
+
+```{r}
+#| tbl-cap: As @tbl-mean, but with the last seven columns showing the interquartile ranges of the download times (difference between the time where the top 25% of data points begin and where the bottom 25% begin) in seconds.
+#| tbl-cap-location: bottom
+#| label: tbl-iqr
+
+downloadTab |>
+  select(!starts_with("mean")) |>
+  rename_with(\(x) str_remove(x, "IQR_"), .cols = starts_with("IQR")) |>
+  kbl(booktabs = TRUE, linesep = c("", "\\addlinespace", rep("", 9))) |>
+  kable_styling(latex_options = c("striped")) |>
+  column_spec(1:10, monospace = TRUE) |>
+  row_spec(0, monospace = TRUE)
+```
 
 
-## The raw data for upload times to Swarm
 
-As mentioned before, upload times to Swarm were also measured. Uploads have been performed using the `direct` method, instead of the default `deferred` method. The raw data are in @fig-upload-empirical.
+## Upload times to Swarm
 
-Predictably, upload times increase with file size. Also not surprisingly, there is a regular trend for higher levels of erasure coding to lead to longer upload times.
+Upload times to Swarm were also measured. Uploads have been performed using the `direct` method, instead of the default `deferred` method. The data are visualized in @fig-upload-empirical. Predictably, upload times increase with file size. Also not surprisingly, there is a regular trend for higher levels of erasure coding to lead to longer upload times.
 
 ```{r}
 uploadDataFromJsonRaw <- function(jsonFile) {
@@ -185,7 +239,7 @@ uploadDataFromJsonRaw <- function(jsonFile) {
     (`[`)(1) |>
     as_tibble() |>
     unnest(swarm) |>
-    rename(erasure = ul_redundancy, time = upload_time)
+    rename(erasure = ul_redundancy, time_sec = upload_time)
 }
 
 
@@ -203,8 +257,8 @@ udat <-
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
-  select(erasure, size_kb, time) |>
-  arrange(erasure, size_kb, time) |>
+  select(erasure, size_kb, time_sec) |>
+  arrange(erasure, size_kb, time_sec) |>
   mutate(erasure = case_match(
     erasure,
     0 ~ "NONE",
@@ -221,9 +275,10 @@ udat <-
 #| fig-height: 4
 #| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding.
 #| label: fig-upload-empirical
+
 udat |>
   mutate(erasure = as_factor(erasure)) |>
-  ggplot(aes(x = as_factor(size_kb), y = time, color = erasure, fill = erasure)) +
+  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = erasure, fill = erasure)) +
   geom_boxplot(alpha = 0.3, coef = Inf) +
   scale_x_discrete(labels = c("1 KB", "10 KB", "100 KB", "1 MB",
                               "10 MB", "100 MB", "500 MB")) +
@@ -235,3 +290,31 @@ udat |>
        color = "Erasure coding", fill = "Erasure coding") +
   theme_bw()
 ```
+
+@tbl-uploads shows the upload times in tabular format, for all combinations of file size and erasure level. It shows both the mean upload times as well as the spread of the data around that mean.
+|> 
+```{r}
+uploadTab <-
+  udat |>
+  mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
+                           10000~"10MB", 100000~"100MB", 500000~"500MB")) |>
+  summarize(mean = round(mean(time_sec), 2),
+            IQR = round(IQR(time_sec), 2),
+            .by = c(size, erasure)) #|>
+  #pivot_wider(names_from = size, values_from = c(mean, IQR))
+```
+
+```{r}
+#| tbl-cap: Mean upload times (column 3) and their interquartile range (column 4) for all combinations of file size and erasure level (columns 1 and 2).
+#| tbl-cap-location: bottom
+#| label: tbl-uploads
+
+uploadTab |>
+  rename(`mean upload time (sec)` = mean,
+         `IQR upload time (sec)` = IQR) |>
+  kbl(booktabs = TRUE, linesep = c(rep("", 6), "\\addlinespace")) |>
+  kable_styling(latex_options = c("striped")) |>
+  column_spec(1:4, monospace = TRUE) |>
+  row_spec(0, monospace = TRUE)
+```
+
