@@ -25,6 +25,7 @@ knitr:
     message: false
     warning: false
     fig-align: center
+    tbl-cap-location: bottom
     R.options:
       knitr.kable.NA: ""
 execute: 
@@ -39,9 +40,9 @@ latex-tinytex: false
 ```{r}
 library(knitr) # Neatly formatted tables (for output)
 library(jsonlite) # Converting JSON files to data frames
-library(tidyverse) # Efficient data manipulation and plotting
-library(ggbeeswarm) # Arrange data points to reflecting their distribution
 library(kableExtra) # Neat tables
+library(ggbeeswarm) # Arrange data points to reflect their distribution
+library(tidyverse) # Efficient data manipulation and plotting
 ```
 
 
@@ -89,7 +90,6 @@ After we load and compile the data, we get a table with 7293 rows and 8 columns 
 
 ```{r}
 #| tbl-cap: Failed download attempts.
-#| tbl-cap-location: bottom
 #| label: tbl-fails
 
 dat0 |>
@@ -97,7 +97,7 @@ dat0 |>
   mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
                            10000~"10MB", 100000~"100MB", 500000~"500MB")) |>
   count(platform, server, size, erasure, strategy,
-        name = "number of fails") |>
+        name = "number-of-fails") |>
   kbl(booktabs = TRUE, linesep = "") |>
   kable_styling(latex_options = c("striped")) |>
   column_spec(1:6, monospace = TRUE) |>
@@ -108,7 +108,6 @@ On the other hand, all the other 7017 downloads succeeded, and all but four of t
 
 ```{r}
 #| tbl-cap: Downloads that succeeded, but not on the first attempt.
-#| tbl-cap-location: bottom
 #| label: tbl-attempts
 
 dat0 |>
@@ -118,6 +117,7 @@ dat0 |>
   mutate(size = case_match(size_kb, 1~"1KB", 10~"10KB", 100~"100KB", 1000~"1MB",
                            10000~"10MB", 100000~"100MB", 500000~"500MB"),
          .after = "size_kb", .keep = "unused") |>
+  rename(`time(sec)` = time_sec) |>
   kbl(booktabs = TRUE, linesep = "") |>
   kable_styling(latex_options = c("striped")) |>
   column_spec(1:7, monospace = TRUE) |>
@@ -151,7 +151,7 @@ The data from the experiment are shown in @fig-empirical. We have a grid of pane
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 10.5
-#| fig-cap: Empirical results from the benchmarking experiment
+#| fig-cap: Empirical results from the benchmarking experiment.
 #| label: fig-empirical
 
 
@@ -164,11 +164,11 @@ dat |>
   ggplot(aes(x = size_kb, y = time_sec, color = strategy)) +
   geom_quasirandom(alpha = 0.5, shape = 1) +
   scale_x_log10(breaks = c(10, 1000, 100000),
-                labels = c("10", "1000", "100 000")) +
-  scale_y_log10(breaks = 10^(-1:3),
-                labels = c(0.1, 1, 10, 100, 1000)) +
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(0.5, 30, 1800),
+                labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
-  labs(x = "File size (KB)", y = "Download time (seconds)",
+  labs(x = "File size", y = "Download time (seconds)",
        color = "Strategy: ", fill = "Strategy: ") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   facet_grid(pler ~ server) +
@@ -201,7 +201,6 @@ downloadTab <-
 
 ```{r}
 #| tbl-cap: Mean download times in seconds (last seven columns) for each platform, erasure level, and download strategy (first three columns). The seven columns with the mean download times correspond to distinct file sizes. Data have been averaged over different servers.
-#| tbl-cap-location: bottom
 #| label: tbl-mean
 
 downloadTab |>
@@ -210,12 +209,12 @@ downloadTab |>
   kbl(booktabs = TRUE, linesep = c("", "\\addlinespace", rep("", 9))) |>
   kable_styling(latex_options = c("striped")) |>
   column_spec(1:10, monospace = TRUE) |>
-  row_spec(0, monospace = TRUE)
+  row_spec(0, monospace = TRUE) |>
+  add_header_above(c(" " = 3, "Mean download times (sec)" = 7))
 ```
 
 ```{r}
 #| tbl-cap: As @tbl-mean, but with the last seven columns showing the interquartile ranges of the download times (difference between the time where the top 25% of data points begin and where the bottom 25% begin) in seconds.
-#| tbl-cap-location: bottom
 #| label: tbl-iqr
 
 downloadTab |>
@@ -224,7 +223,8 @@ downloadTab |>
   kbl(booktabs = TRUE, linesep = c("", "\\addlinespace", rep("", 9))) |>
   kable_styling(latex_options = c("striped")) |>
   column_spec(1:10, monospace = TRUE) |>
-  row_spec(0, monospace = TRUE)
+  row_spec(0, monospace = TRUE) |>
+  add_header_above(c(" " = 3, "Interquartile range (IQR) of download times (sec)" = 7))
 ```
 
 
@@ -273,7 +273,7 @@ udat <-
 #| out-width: 75%
 #| fig-width: 6
 #| fig-height: 4
-#| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding.
+#| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding. Interpretation of the box plots is as follows. The thick horizontal line is the median (point that separates the top and bottom half of the data), the box around it encompasses the middle 50% of all data points, and the top/bottom whiskers show where the top/bottom 25% of the data points are.
 #| label: fig-upload-empirical
 
 udat |>
@@ -300,18 +300,16 @@ uploadTab <-
                            10000~"10MB", 100000~"100MB", 500000~"500MB")) |>
   summarize(mean = round(mean(time_sec), 2),
             IQR = round(IQR(time_sec), 2),
-            .by = c(size, erasure)) #|>
-  #pivot_wider(names_from = size, values_from = c(mean, IQR))
+            .by = c(size, erasure))
 ```
 
 ```{r}
-#| tbl-cap: Mean upload times (column 3) and their interquartile range (column 4) for all combinations of file size and erasure level (columns 1 and 2).
-#| tbl-cap-location: bottom
+#| tbl-cap: Mean upload times (column 3) and their interquartile range (IQR; column 4) for all combinations of file size and erasure level (columns 1 and 2).
 #| label: tbl-uploads
 
 uploadTab |>
-  rename(`mean upload time (sec)` = mean,
-         `IQR upload time (sec)` = IQR) |>
+  rename(`mean-upload-time(sec)` = mean,
+         `IQR-upload-time(sec)` = IQR) |>
   kbl(booktabs = TRUE, linesep = c(rep("", 6), "\\addlinespace")) |>
   kable_styling(latex_options = c("striped")) |>
   column_spec(1:4, monospace = TRUE) |>
