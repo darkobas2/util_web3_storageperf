@@ -2,6 +2,11 @@
 title: "Description and Analysis of the Web3 Storage Benchmarking Experiment"
 author: "György Barabás and Marko Zidarić"
 format:
+  html:
+    theme: cosmo
+    number-sections: false
+    embed-resources: true
+    code-fold: false
   pdf:
     keep-tex: false
     fontsize: 11pt
@@ -12,11 +17,6 @@ format:
     margin-bottom: 1in
     code-block-border-left: false
     number-sections: false
-  html:
-    theme: cosmo
-    number-sections: false
-    embed-resources: true
-    code-fold: false
 knitr:
   opts_chunk:
     eval: true
@@ -34,8 +34,9 @@ latex-tinytex: false
 
 
 ```{r}
-library(knitr) # Neatly formatted tables (for output)
 library(jsonlite) # Converting JSON files to data frames
+library(knitr) # Neatly formatted tables (for output)
+library(kableExtra) # Even neater tables
 library(tidyverse) # Efficient data manipulation and plotting
 library(lme4) # Fitting generalized linear mixed models
 library(ggbeeswarm) # Arrange data points to reflecting their distribution
@@ -45,27 +46,26 @@ library(ggbeeswarm) # Arrange data points to reflecting their distribution
 
 ## Purpose and experimental design
 
-The purpose of this project was to compare data download speeds and reliability across three different Web3 storage platforms: Arweave, IPFS, and Swarm. The data were gathered by first uploading files of various sizes to all three platforms, and then downloading them under different circumstances. We then compared the times needed for data retrieval to see whether and when some platform allowed for shorter download times than the others.
+The purpose of this project was to compare data download speeds and reliability across three different Web3 storage platforms: Arweave, IPFS, and Swarm. Additionally, we wanted to explore the effects of erasure coding and various file retrieval strategies on download performance within the Swarm platform. Finally, for Swarm only, we also wanted to get a picture of how the speed of file uploads scales with their size.
+
+The data were gathered by first uploading files of various sizes to all three platforms, and then downloading them under different circumstances. We then compared the times needed for data retrieval to see whether and when some platform allowed for shorter download times than the others.
 
 Our goal was to implement this speed comparison as a proper, repeatable, well-designed digital experiment. This meant that we always uploaded unique, randomly generated files of fixed size, which were then downloaded from the same server to remove the confounding influence of server identity (the experiment as a whole can, and was, then repeated over several different servers; see below). We up- and downloaded the exact same number of files of specified sizes on each platform. We additionally varied some other parameters as well to gauge their influence on download speeds. We varied all parameters in a fully factorial way, to get at all their possible combinations. The factors were as follows:
 
--   `size`: The size of the uploaded random file. We had 6 distinct factor levels: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, and 100 MB. (In other words, starting at 1 KB and always increasing by a factor of 10 up to 100 MB.) Importantly, every single upload was a unique random file, even if the file sizes were otherwise equal.
--   `platform`: Whether the target platform is Arweave, IPFS, or Swarm. Additionally, Swarm itself breaks up into several sub-factors depending on:
+-   `platform`: Whether the target platform is Arweave, IPFS, or Swarm. Additionally, Swarm breaks up into several sub-factors depending on:
     -   the strength of erasure coding employed (`0` = None, `1` = Medium, `2` = Strong, `3` = Insane, and `4` = Paranoid);
     -   the used redundancy strategy (we use `NONE` whenever erasure coding is set to 0; otherwise we use `DATA` and `RACE`).
-
     Together, these lead to 11 distinct factor levels for `platform`, namely `Arweave`, `IPFS`, and all combinations of the above for Swarm: `Swarm_0_NONE`, `Swarm_1_DATA`, `Swarm_1_RACE`, `Swarm_2_DATA`, `Swarm_2_RACE`, `Swarm_3_DATA`, `Swarm_3_RACE`, `Swarm_4_DATA`, and `Swarm_4_RACE`.
+-   `size`: The size of the uploaded random file. We had 7 distinct factor levels: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, 100 MB, and 500 MB. Importantly, every single upload was a unique random file, even if the file sizes were otherwise equal. *Note:* 500 MB file uploads were limited to Swarm, and even there to nonzero erasure coding.
 -   `server`: The identity of the server initiating the downloads might influence download speeds. For a fair comparison, servers should be identical within an experiment, but it makes sense to perform the whole experimental suite over multiple different servers---which is what we have done. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used. Here we have used three distinct servers.
 -   `replicate`: To gain sufficient sample sizes for proper statistical analysis, every single combination of the above factors was replicated 30 times. For example, given the unique combination of 1MB files uploaded to IPFS on Server 1, we actually up- and downloaded at least 30 such files (each uniquely and randomly generated, of course).
 
-The above design leads to (6 filesizes) x (11 platforms) x (3 servers) x (30 replicates) = 5940 unique download experiments. They are summarized in tabular format as well in the README of the GitHub repository <https://github.com/darkobas2/util_web3_storageperf/tree/V2>.
-
-Additionally, here are some further notes and points about the experimental design outlined above:
+The above design leads to (7 filesizes) x (11 platforms) x (3 servers) x (30 replicates) = 6930 unique download experiments. Additionally, here are some further notes and points about the experimental design outlined above:
 
 -   For Swarm (and only Swarm), upload speeds were also measured, using the tags API to make sure that all chunks have been properly placed and uploaded to the system before declaring a file fully uploaded.
 -   The reason for insisting on unique, randomly generated files for uploading was to eliminate the possibility of cached downloads (if supported by the target platform).
--   All uploads to Swarm were deferred. This is not ideal for this experiment, so we will likely change this and re-run everything by setting upload type to direct.
--   We needed to make sure that no download started after the system has properly stored the data. Since our files are relatively small, uploading should be done in about 10-20 minutes at most. So we opted for a crude but reliable way of eliminating any syncing issues: we waited exactly 2 hours after every upload, and began downloading only then.
+-   All uploads to Swarm were direct, instead of the default "deferred" upload type. This was a better fit with the spirit of the experiment.
+-   We needed to make sure that no download started before the system has properly stored the data. Since our files are relatively small, uploading should be done in about 10-20 minutes at most (except 500 MB files, which take about half an hour). So we opted for a crude but reliable way of eliminating any syncing issues: we waited exactly 2 hours after every upload, and began downloading only then.
 -   When testing IPFS, the data were uploaded from one server but downloaded from another.
 -   All Swarm downloads were done using nodes with an active checkbook. (Eventually we might also repeat the experiment with no checkbook, but for now we are not dealing with this issue.)
 -   Every download was re-attempted in case of a failure. In total, 15 attempts were made before giving up and declaring that the file could not be retrieved.
@@ -79,29 +79,45 @@ Additionally, here are some further notes and points about the experimental desi
 dat0 <-
   read_rds("../data/arweave-2024-11/arweave.rds") |>
   bind_rows(read_rds("../data/ipfs-2024-11/ipfs.rds")) |>
-  bind_rows(read_rds("../data/swarm-2024-12/swarm.rds"))
+  bind_rows(read_rds("../data/swarm-2025-01/swarm.rds"))
 ```
 
-After we load and compile the data, we get a table with 6966 rows and 8 columns. Each row corresponds to a single download. The first ten rows are:
+After we load and compile the data, we get a table with 7293 rows and 8 columns. Each row corresponds to a single download. The first ten rows are shown in @tbl-firstten:
 
 ```{r}
+kabl <- function(tab) {
+  tab |>
+    kbl(booktabs = TRUE, linesep = "") |>
+    kable_styling(latex_options = c("striped")) |>
+    column_spec(1:ncol(tab), monospace = TRUE) |>
+    row_spec(0, monospace = TRUE)
+}
+```
+
+```{r}
+#| tbl-cap: First ten rows of the raw download data.
+#| label: tbl-firstten
+
 dat0 |>
   head(n = 10) |>
-  mutate(time_sec = round(time_sec, 4)) |>
-  kable()
+  mutate(time_sec = round(time_sec, 3)) |>
+  kabl()
 ```
 
-A quick note: we just calculated that the experimental design leads to 5940 downloads, yet here we have 6966 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 327 out of the 6966 downloads could not finish even in 15 attempts. This is how these failures are distributed across the parameterizations:
+A quick note: we just calculated that the experimental design leads to 7293 downloads, yet here we have 6966 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. The distribution of these failures across the various parameterizations is shown in @tbl-fails.
 
 ```{r}
+#| tbl-cap: Failed download attempts.
+#| label: tbl-fails
+
 dat0 |>
   filter(!sha256_match) |>
   count(platform, server, size_kb, erasure, strategy,
         name = "number of fails") |>
-  kable()
+  kabl()
 ```
 
-On the other hand, all the other 6639 downloads succeeded, and all but two of them on the first attempt. (One download of a 100 MB file on Arweave completed on the 8th attempt, and another 100 MB file on Swarm on the 9th.) Before analyzing the data, we remove the 327 failed downloads from the table and work only with the rest.
+On the other hand, all the other 7017 downloads succeeded, and all but two of them on the first attempt. (One download of a 100 MB file on Arweave completed on the 8th attempt, one 500 MB file on Swarm on the 2nd attempt, and two more 500 MB files on Swarm on the 3rd attempt. Before analyzing the data, we remove the 276 failed downloads from the table and work only with the rest.
 
 ```{r}
 dat <-
@@ -122,13 +138,13 @@ dat <-
 
 ## Visualizing and interpreting the raw download data
 
-The data from the experiment are shown in @fig-empirical. We have a grid of panels, with 7 rows and 3 columns. The columns are the three different servers used for downloading. The rows indicate storage platform and level of erasure coding (if applicable). Within each panel, file size is along the x-axis and retrieval time along the y-axis, both on the log scale. Colors show retrieval strategies: when erasure coding is absent, blue means NONE, whereas in the presence of erasure coding, it means DATA. Yellow indicates the RACE strategy. Each point corresponds to one download event. The points have been jittered sideways in a way that reflects the general shape of their distribution. This means that the only file sizes are 1 KB, 10 KB, 100 KB, 1 MB 10 MB, and 100 MB; points that do not fall at those sizes are jittered and so they still have one of these six sizes.
+The data from the experiment are shown in @fig-empirical. We have a grid of panels, with 7 rows and 3 columns. The columns are the three different servers used for downloading. The rows indicate storage platform and level of erasure coding (if applicable). Within each panel, file size is along the x-axis and retrieval time along the y-axis, both on the log scale. Colors show retrieval strategies: when erasure coding is absent, blue means NONE, whereas in the presence of erasure coding, it means DATA. Yellow indicates the RACE strategy. Each point corresponds to one download event.The points have been jittered sideways in a way that reflects the general shape of their distribution. This is just for visual aid; the only possible file sizes are still 1 KB, 10 KB, 100 KB, 1 MB 10 MB, 100 MB, and 500 MB.
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 10.5
-#| fig-cap: Empirical results from the benchmarking experiment
+#| fig-cap: Empirical results from the benchmarking experiment.
 #| label: fig-empirical
 
 
@@ -138,10 +154,12 @@ dat |>
     platform != "Swarm" ~ platform,
     TRUE                ~ str_c(platform, ", ", erasure)
   ))) |>
-  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = strategy)) +
+  ggplot(aes(x = size_kb, y = time_sec, color = strategy)) +
   geom_quasirandom(alpha = 0.5, shape = 1) +
-  scale_x_discrete(labels = c("1KB", "10KB", "100KB", "1MB", "10MB", "100MB")) +
-  scale_y_log10() +
+  scale_x_log10(breaks = c(10, 1000, 100000),
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(0.5, 30, 1800),
+                labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
   labs(x = "File size", y = "Download time (seconds)",
        color = "Strategy: ", fill = "Strategy: ") +
@@ -151,13 +169,45 @@ dat |>
   theme(legend.position = "bottom")
 ```
 
-Some important take-aways from this figure:
+Some immediate take-aways from this figure:
 
 -   Arweave's download times increase the slowest, though it also takes longer to download small files from it.
 -   IPFS download times increase somewhat faster.
 -   Swarm increases the fastest, so for large files it is the least efficient. This was expected, given its underlying DISC model.
--   The level of erasure coding does not appear to have much of an effect on download speeds.
--   The DATA and RACE retrieval strategies do lead to differences. For small files RACE is faster; for larger files, sometimes RACE is faster, sometimes DATA.
+-   The DATA and RACE retrieval strategies lead to visible differences in download times, but this difference appears context-dependent. For small files RACE is faster, but for larger files and higher levels of erasure coding, DATA appears more efficient.
+-   It is difficult to glean out the effect of erasure coding on download times from this figure alone.
+
+To address the last item above, we can visualize the data separately for each size category (@fig-erasure-box). This removes the distortion caused by the fact that files of different size download at vastly different speeds. What we see is that except for very small (1 KB) files, there is a non-monotonic relationship between erasure levels and download times. Intermediate erasure levels offer the best speed gains, which then diminish and sometimes even turn into a speed loss when reaching the highest erasure levels. This is especially true for the RACE strategy at larger file sizes (10-100 MB), where downloading files under the PARANOID erasure coding is generally slower not just than the scenario without erasure coding, but also slower than the corresponding DATA strategy.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and download strategy (colors). Note that the y-axis is individually scaled for each panel. Box plots are standard except no outliers are shown---that is, the thick horizontal line is the median (point that separates the top and bottom half of the data), the box around it encompasses the middle 50% of all data points, and the top/bottom whiskers show where the top/bottom 25% of the data are. Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding.
+#| label: fig-erasure-box
+
+
+dat |>
+  filter(platform == "Swarm") |>
+  # There are no NONE erasure-level data for 500 MB, so let's remove those:
+  filter(size_kb < 500000) |>
+  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
+                           1000~"1 MB", 10000~"10 MB", 100000~"100 MB")) |>
+  mutate(size = as_factor(size)) |>
+  # There are no NONE erasure-level data for 500 MB, so let's remove those:
+  filter(size != "500 MB") |>
+  rename(Size = size) |>
+  ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
+  geom_boxplot(alpha = 0.3, coef = Inf) +
+  labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
+       y = "Download time (seconds)") +
+  facet_wrap(~ Size, scales = "free_y", labeller = label_both) +
+  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
+```
 
 
 
@@ -348,7 +398,7 @@ uploadFileSizeFromJsonRaw <- function(jsonFile) {
 
 
 dat <-
-  tibble(file = Sys.glob("../references/swarm-run-2024-dec/*.json")) |>
+  tibble(file = Sys.glob("../data/swarm-2025-01/references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
