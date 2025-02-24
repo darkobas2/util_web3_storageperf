@@ -1,6 +1,7 @@
 library(tidyverse)
 
 
+
 dat0 <-
   read_rds("../data/swarm-2025-01/swarm.rds") |>
   filter(sha256_match) |>
@@ -9,8 +10,6 @@ dat0 <-
   mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
   select(erasure, strategy, size_kb, server, time_sec) |>
   arrange(erasure, strategy, size_kb, server, time_sec)
-
-
 
 # I clearly see it, for the same small and medium sizes standard deviations
 # are halved or more reduced.
@@ -90,8 +89,7 @@ dat |>
   mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
   mutate(glance = map(ANOVA, broom::glance)) |>
   unnest(glance) |>
-  select(!data & !ANOVA) |>
-  rename(r2 = r.squared, adj_r2 = adj.r.squared)
+  select(!data & !ANOVA & !df.residual & !nobs & !statistic)
 
 # ANOVA tables
 dat |>

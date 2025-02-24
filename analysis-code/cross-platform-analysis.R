@@ -1,6 +1,4 @@
-library(jsonlite)
 library(tidyverse)
-library(ggfortify)
 library(ggbeeswarm)
 library(lme4)
 library(broom.mixed)
@@ -79,6 +77,25 @@ dat |>
   ggplot(aes(x = log(size_kb)^2, y = log(time_sec))) +
   geom_quasirandom(alpha = 0.2, color = "steelblue") +
   geom_smooth(method = lm) +
+  theme_bw()
+
+# Mean
+dat |>
+  filter(platform == "Swarm") |>
+  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+  mutate(strategy = str_c("Strategy: ", strategy)) |>
+  mutate(size_kb = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB", 1000~"1 MB",
+                              10000~"10 MB", 100000~"100 MB", 500000~"500 MB")) |>
+  mutate(size_kb = as_factor(size_kb)) |>
+  summarize(m = mean(time_sec), n = n(), .by = c(size_kb, erasure, strategy)) |>
+  ggplot(aes(x = erasure, y = m, color = size_kb, group = size_kb)) +
+  geom_point(size = 2) +
+  geom_line(alpha = 0.5) +
+  scale_color_viridis_d(option = "C", end = 0.9) +
+  scale_y_log10() +
+  labs(color = "File size", x = "Erasure level",
+       y = "Mean of download times (seconds)") +
+  facet_grid(. ~ strategy) +
   theme_bw()
 
 # Variance
