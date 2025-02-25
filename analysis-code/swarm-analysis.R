@@ -40,7 +40,7 @@ dat0 |>
   theme(legend.position = "bottom",
         axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
 
-dat <-
+datErasure <-
   dat0 |>
   # There are no NONE erasure-level data for 500 MB, so let's remove those:
   filter(size_kb < 500000) |>
@@ -53,7 +53,7 @@ dat <-
   relocate(size, size_kb, strategy) |>
   arrange(size, strategy, erasure, server, time)
 
-dat |>
+datErasure |>
   summarize(m = mean(time), s = sd(time), .by = c(size, erasure, strategy)) |>
   ggplot(aes(x = erasure, y = m, ymin = m - s, ymax = m + s, color = strategy)) +
   geom_line(aes(group = str_c(size, strategy)), alpha = 0.5) +
@@ -72,7 +72,7 @@ dat |>
 # Fit ANOVA for each size separately. Predictors: erasure level and retrieval strategy.
 # Fit twice: with- and without the erasure:strategy interaction term. Note: there are
 # no NONE erasure-level data for 500 MB, so let's remove those.
-dat |>
+datErasure |>
   nest(data = !size) |>
   mutate(ANOVA_noint = map(data, \(x) lm(time ~ erasure + strategy, data = x))) |>
   mutate(ANOVA_int   = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
@@ -84,7 +84,7 @@ dat |>
 # is less than 2. So we go ahead with interactions.
 
 # Model quality
-dat |>
+datErasure |>
   nest(data = !size) |>
   mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
   mutate(glance = map(ANOVA, broom::glance)) |>
@@ -92,7 +92,7 @@ dat |>
   select(!data & !ANOVA & !df.residual & !nobs & !statistic)
 
 # ANOVA tables
-dat |>
+datErasure |>
   nest(data = !size) |>
   mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
   mutate(tidy = map(ANOVA, compose(broom::tidy, anova))) |>
@@ -113,7 +113,7 @@ dat |>
   print(n = Inf)
 
 # Regression coefficients
-dat |>
+datErasure |>
   nest(data = !size) |>
   mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
   mutate(tidy = map(ANOVA, broom::tidy)) |>
@@ -134,7 +134,7 @@ dat |>
   print(n = Inf)
 
 # Tukey post-hoc:
-dat |>
+datErasure |>
   nest(data = !size) |>
   mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
   mutate(tukey = map(ANOVA, compose(broom::tidy, TukeyHSD, aov))) |>
@@ -148,62 +148,3 @@ dat |>
   )) |>
   select(!data & !ANOVA & !null.value) |>
   filter(term == "strategy")
-
-
-
-# Polynomial fits, to detect hump-shape
-polyModels <-
-  dat |>
-  filter(strategy != "RACE") |> # Or DATA
-  mutate(erasure_num = as.integer(erasure) - 1L) |>
-  nest(data = !size) |>
-  mutate(sqr = map(data, \(x) lm(time ~ I((erasure_num - 2L)^2), data = x))) |>
-  mutate(quad = map(data, \(x) lm(time ~ poly(erasure_num, 2), data = x))) |>
-  mutate(cubic = map(data, \(x) lm(time ~ poly(erasure_num, 3), data = x))) |>
-  pivot_longer(sqr | quad | cubic, names_to = "model", values_to = "fit") |>
-  mutate(model = fct_relevel(model, "sqr", "quad", "cubic")) |>
-  relocate(size, model, data, fit)
-
-# Comparing AIC scores
-polyModels |>
-  mutate(AIC = map_dbl(fit, AIC)) |>
-  mutate(lo = AIC - 5, hi = AIC + 5) |>
-  ggplot(aes(x = model, y = AIC, ymin = lo, ymax = hi)) +
-  geom_point(size = 2, color = "steelblue") +
-  geom_errorbar(width = 0.3, color = "steelblue", alpha = 0.75) +
-  facet_wrap(~ size, scales = "free", labeller = label_both) +
-  labs(y = "AIC score") +
-  theme_bw()
-
-polyModels |>
-  mutate(fittab = map(fit, broom::tidy), fitglance = map(fit, broom::glance)) |>
-  unnest(fittab) |>
-  filter(term %in% c("I((erasure_num - 3)^2)",
-                     "poly(erasure_num, 2)2",
-                     "poly(erasure_num, 3)2")) |>
-  mutate(adj.p.value = p.adjust(p.value, "bonferroni"), .keep = "unused") |>
-  select(!statistic) |>
-  unnest(fitglance) |>
-  select(size, term, estimate, std.error, adj.p.value, adj.r.squared, AIC)
-
-polyModels |>
-  mutate(pred = map(fit, \(x) round(predict(x), 4))) |>
-  unnest(c(data, pred)) |>
-  summarize(
-    mean = mean(time),
-    lower = mean(time) - sd(time),
-    upper = mean(time) + sd(time),
-    .by = c(size, model, erasure, strategy, pred)
-  ) |>
-  ggplot(aes(x = erasure, y = mean, ymin = lower, ymax = upper, color = strategy)) +
-  geom_line(aes(x = erasure, y = pred, group = size), color = "black", alpha = 0.5) +
-  geom_point(size = 2, color = "steelblue",
-             position = position_dodge(width = 0.6)) +
-  geom_errorbar(width = 0.3, color = "steelblue",
-                position = position_dodge(width = 0.6)) +
-  labs(color = "Strategy: ", x = "Erasure level",
-       y = "Download time z-score (mean +/- 1 std dev)") +
-  facet_grid(model ~ size, scales = "free_y", labeller = label_both) +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 40, vjust = 1, hjust = 1))
