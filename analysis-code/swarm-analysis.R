@@ -155,9 +155,9 @@ dat |>
 polyModels <-
   dat |>
   filter(strategy != "RACE") |> # Or DATA
-  mutate(erasure_num = as.integer(erasure)) |>
+  mutate(erasure_num = as.integer(erasure) - 1L) |>
   nest(data = !size) |>
-  mutate(sqr = map(data, \(x) lm(time ~ I((erasure_num - 3L)^2), data = x))) |>
+  mutate(sqr = map(data, \(x) lm(time ~ I((erasure_num - 2L)^2), data = x))) |>
   mutate(quad = map(data, \(x) lm(time ~ poly(erasure_num, 2), data = x))) |>
   mutate(cubic = map(data, \(x) lm(time ~ poly(erasure_num, 3), data = x))) |>
   pivot_longer(sqr | quad | cubic, names_to = "model", values_to = "fit") |>

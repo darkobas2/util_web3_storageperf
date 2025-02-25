@@ -180,6 +180,22 @@ Some immediate take-aways from this figure:
 To address the last item above, we can visualize the data separately for each size category (@fig-erasure-box). This removes the distortion caused by the fact that files of different size download at vastly different speeds. What we see is that except for very small (1 KB) files, there is a non-monotonic relationship between erasure levels and download times. Intermediate erasure levels offer the best speed gains, which then diminish and sometimes even turn into a speed loss when reaching the highest erasure levels. This is especially true for the RACE strategy at larger file sizes (10-100 MB), where downloading files under the PARANOID erasure coding is generally slower not just than the scenario without erasure coding, but also slower than the corresponding DATA strategy.
 
 ```{r}
+datErasure <-
+  dat |>
+  filter(platform == "Swarm") |>
+  # There are no NONE erasure-level data for 500 MB, so we remove those:
+  filter(size_kb < 500000) |>
+  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
+                           1000~"1 MB", 10000~"10 MB", 100000~"100 MB")) |>
+  mutate(size = as_factor(size)) |>
+  # Download time z-zcores, for each file size category:
+  mutate(time = (time_sec - mean(time_sec)) / sd(time_sec), .by = size) |>
+  select(size, size_kb, strategy, server, erasure, time, time_sec) |>
+  arrange(size, strategy, erasure, server, time)
+```
+
+```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 6
@@ -187,21 +203,15 @@ To address the last item above, we can visualize the data separately for each si
 #| label: fig-erasure-box
 
 
-dat |>
-  filter(platform == "Swarm") |>
-  # There are no NONE erasure-level data for 500 MB, so let's remove those:
-  filter(size_kb < 500000) |>
-  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
-                           1000~"1 MB", 10000~"10 MB", 100000~"100 MB")) |>
-  mutate(size = as_factor(size)) |>
-  # There are no NONE erasure-level data for 500 MB, so let's remove those:
-  filter(size != "500 MB") |>
-  rename(Size = size) |>
+datErasure |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
+  mutate(size = as_factor(str_c("Size: ", size))) |>
   ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
   geom_boxplot(alpha = 0.3, coef = Inf) +
   labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
        y = "Download time (seconds)") +
-  facet_wrap(~ Size, scales = "free_y", labeller = label_both) +
+  facet_wrap(~ size, scales = "free_y") +
   scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
   scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
   theme_bw() +
@@ -213,9 +223,9 @@ dat |>
 
 ## Modeling download times
 
-We now turn to building simple predictive models for these data. Their purpose is to be able to extrapolate how long it would take to download larger dara files than the ones used in the data. The models are phenomenological, and therefore should be used with care: they will not extrapolate well for file sizes much, much larger than the ones tested. But they can give an idea of how each parameter is expected to influence the results.
+We now turn to building simple predictive models for these data. Their purpose is to be able to extrapolate how long it would take to download larger data files than the ones used in the data. The models are phenomenological, and therefore should be used with care: they will not extrapolate well for file sizes much larger than the ones tested. But they can give an idea of how each parameter is expected to influence the results.
 
-We will build separate models for the three platforms. Since it is simpler, let us start with Arweave and IPFS, and then move on to Swarm.
+We will build separate models for the three platforms. Since they are simpler in terms of the structure of the data, let us start with Arweave and IPFS, and then move on to Swarm.
 
 **Arweave and IPFS** By looking at the data in @fig-empirical, we see that log download times increase nonlinearly with log file size. The relationship may be quadratic or cubic; here we assume it is cubic (this assumption does have limitations, as we will see later). To avoid bias arising from the fact that the log function compresses large values more than small values, we want to use a generalized linear model with a log link function to predict download times. Also, since the data come from three different servers, we will take the influence of server identity into account as a random effect. The model therefore reads
 $$
@@ -281,7 +291,7 @@ Before doing anything else, let us confirm that the models do capture the data w
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 10.5
-#| fig-cap: Data together with predictions from the fitted models
+#| fig-cap: Data together with predictions from the fitted models.
 #| label: fig-quality
 
 
@@ -369,7 +379,158 @@ Three remarks about these results are in order. First of all, the modeled curves
 
 
 
-{{< pagebreak >}}
+## Modeling the effects of erasure codes and retrieval strategies
+
+We start from the observations made in @fig-erasure-box: except for very small files, erasure coding has a non-monotonic, U-shaped effect on download times, and while the RACE strategy is generally faster than DATA, this is no longer the case when file sizes are large and erasure coding is very strong.
+
+A clearer and statistically more interpretable version of the same figure is obtained after standardizing download times. Within each size category, we subtract from every observation the mean download time, and divide this difference by the standard deviation of the download times. This results in the *z-score* for download times: the original data, but scaled so that (i) they are dimensionless, (ii) their mean is zero, and (iii) their standard deviation is equal to one. The summary of these z-scores, broken down by erasure level and download strategy, is shown in @fig-erasure-zscore.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: Download time z-scores (y-axis; the z-score is the download time minus the mean, divided by the standard deviation) per file size category (panels), as a function of erasure level (x-axis) and download strategy (colors). Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding. Points represent the mean z-score, whishers represent the plus/minus one standard deviation range around those means. The points and error bars for the different retrieval strategies have been slightly moved sideways to reduce overlap.
+#| label: fig-erasure-zscore
+
+
+datErasure |>
+  summarize(m = mean(time), s = sd(time), .by = c(size, erasure, strategy)) |>
+  mutate(size = as_factor(str_c("Size: ", size))) |>
+  ggplot(aes(x = erasure, y = m, ymin = m - s, ymax = m + s, color = strategy)) +
+  geom_line(aes(group = str_c(size, strategy)), alpha = 0.5,
+            position = position_dodge(width = 0.6)) +
+  geom_point(size = 2, position = position_dodge(width = 0.6)) +
+  geom_errorbar(width = 0.3, position = position_dodge(width = 0.6)) +
+  labs(color = "Strategy: ", x = "Erasure level",
+       y = "Download time z-score (mean +/- 1 std dev)") +
+  facet_grid(. ~ size) +
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 40, vjust = 1, hjust = 1))
+```
+
+The U-shaped relationship is not a mirage: it is supported by models. We will fit three different models to these data to show that this is the case. Each of them relies on treating erasure levels as an ordinal variable, ranging from 0 (NONE) to 4 (PARANOID). The first model is the crudest and simplest, but also the most direct: we predict $z_i$, the download time $z$-score for observation $i$ within a given file size category, as a function of $((\text{erasure})_i - 2)^2$. The subtraction of 2 ensures that the quadratic curve is centered at the STRONG erasure level, and the squaring is there to fit a U-shaped curve. The model, which we will call `sqr`, reads
+$$
+z_i
+= \beta_0
++ \beta_1 ((\text{erasure})_i - 2)^2
++ \epsilon_i ,
+$$ {#eq-erasure-sqr}
+where the $\beta_i$ are regression coefficients and the $\epsilon_i$ are normally-distributed residuals. The second model is a more flexible version of the same: instead of fixing the minimum of the function at the STRONG (=2) erasure level, we let the model decide, by adding an explicit first-order term as well:
+$$
+z_i
+= \beta_0
++ \beta_1 (\text{erasure})_i
++ \beta_2 (\text{erasure})_i^2
++ \epsilon_i .
+$$ {#eq-erasure-quad}
+This model will be abbreviated `quad`. Finally, the third model aims at not just making inference easier, but providing a model that predicts the mean behavior accurately. We do this by also fitting a cubic term:
+$$
+z_i
+= \beta_0
++ \beta_1 (\text{erasure})_i
++ \beta_2 (\text{erasure})_i^2
++ \beta_3 (\text{erasure})_i^3
++ \epsilon_i .
+$$ {#eq-erasure-quad}
+This model will be called `cubic`. Note that all these models are for one file size category only. While it would be possible to fit a joint model with file size providing an extra term, it is more to the point to instead fit one model per file size category. Since there are 6 sizes (1 KB, 10 KB, 100 KB, 1 MB, 10 MB, and 100 MB) and 3 models (`sqr`, `quad`, and `cubic`), we will fit 18 models. Actually, it will be two times that, for 36 models, because we will fit separately for the DATA and RACE download strategies.
+
+```{r}
+polyModels <-
+  datErasure |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  bind_rows(datErasure |> filter(erasure == "NONE") |> mutate(strategy = "RACE")) |>
+  mutate(erasure_num = as.integer(erasure) - 1L) |>
+  arrange(strategy, erasure, size) |>
+  nest(data = !size & !strategy) |>
+  mutate(sqr = map(data, \(x) lm(time ~ I((erasure_num - 2L)^2), data = x))) |>
+  mutate(quad = map(data, \(x) lm(time ~ poly(erasure_num, 2), data = x))) |>
+  mutate(cubic = map(data, \(x) lm(time ~ poly(erasure_num, 3), data = x))) |>
+  pivot_longer(sqr | quad | cubic, names_to = "model", values_to = "fit") |>
+  mutate(model = fct_relevel(model, "sqr", "quad", "cubic")) |>
+  relocate(size, strategy, model, data, fit)
+```
+
+Let us first of all check how well these models actually fit the data. As seen in @fig-erasure-model-fits, none of the models are completely off, but `quad` and `cubic` are generally much more accurate than `sqr`.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: Model fits to the standardized (z-score) download time data, for the DATA download strategy only (RACE is omitted). Blue points and error bars are as in @fig-erasure-zscore; the black curves are the predictions from the fitted models.
+#| label: fig-erasure-model-fits
+
+
+polyModels |>
+  mutate(pred = map(fit, \(x) round(predict(x), 4))) |>
+  unnest(c(data, pred)) |>
+  summarize(
+    mean = mean(time),
+    lower = mean(time) - sd(time),
+    upper = mean(time) + sd(time),
+    .by = c(size, model, erasure, strategy, pred)
+  ) |>
+  rename(Size = size, Model = model) |>
+  mutate(SizeModStrat = str_c(Size, Model, strategy)) |>
+  ggplot(aes(x = erasure, y = mean, ymin = lower, ymax = upper, color = strategy)) +
+  geom_line(aes(x = erasure, y = pred, color = strategy, group = SizeModStrat),
+            alpha = 0.5, position = position_dodge(width = 0.6)) +
+  geom_point(size = 2, position = position_dodge(width = 0.6)) +
+  geom_errorbar(width = 0.3, position = position_dodge(width = 0.6)) +
+  labs(color = "Strategy: ", x = "Erasure level",
+       y = "Download time (z-score)") +
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  facet_grid(Model ~ Size, scales = "free_y", labeller = label_both) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 40, vjust = 1, hjust = 1))
+```
+
+It is not obvious from this though which model is "best", because the better-fitting models also have more free parameters. To check model quality, we calculate the AIC score of each model and compare them within each file size category. We do this separately for DATA (@fig-aic-data) and RACE (@fig-aic-race) models.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: AIC (Akaike Information Criterion) scores for model fits, restricted to the DATA retrieval strategy. Points show the actual AIC scores; the error bars are always indicating a plus/minus 5 AIC point range. This makes it visually easy to see if two intervals overlap. In case they do not, the models are separated by more than 10 AIC points, which is a good rule of thumb for preferring the model with the lower AIC score.
+#| label: fig-aic-data
+
+
+polyModels |>
+  filter(strategy == "DATA") |>
+  rename(Size = size) |>
+  mutate(AIC = map_dbl(fit, AIC)) |>
+  mutate(lo = AIC - 5, hi = AIC + 5) |>
+  ggplot(aes(x = model, y = AIC, ymin = lo, ymax = hi)) +
+  geom_point(size = 2, color = "steelblue") +
+  geom_errorbar(width = 0.3, color = "steelblue", alpha = 0.75) +
+  facet_wrap(~ Size, scales = "free", labeller = label_both) +
+  labs(y = "AIC score") +
+  theme_bw()
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: As @fig-aic-data, but restricted to the RACE retrieval strategy.
+#| label: fig-aic-race
+
+
+polyModels |>
+  filter(strategy == "RACE") |>
+  rename(Size = size) |>
+  mutate(AIC = map_dbl(fit, AIC)) |>
+  mutate(lo = AIC - 5, hi = AIC + 5) |>
+  ggplot(aes(x = model, y = AIC, ymin = lo, ymax = hi)) +
+  geom_point(size = 2, color = "goldenrod") +
+  geom_errorbar(width = 0.3, color = "goldenrod", alpha = 0.75) +
+  facet_wrap(~ Size, scales = "free", labeller = label_both) +
+  labs(y = "AIC score") +
+  theme_bw()
+```
+
 
 
 ## The raw data for upload times to Swarm
@@ -420,6 +581,8 @@ dat <-
 #| fig-height: 4
 #| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding.
 #| label: fig-upload-empirical
+
+
 dat |>
   mutate(erasure = as_factor(erasure)) |>
   ggplot(aes(x = as_factor(size_kb), y = time, color = erasure, fill = erasure)) +
