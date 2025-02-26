@@ -42,7 +42,6 @@ library(knitr) # Neatly formatted tables (for output)
 library(kableExtra) # Even neater tables
 library(tidyverse) # Efficient data manipulation and plotting
 library(lme4) # Fitting generalized linear mixed models
-library(ggbeeswarm) # Arrange data points to reflect their distribution
 ```
 
 
@@ -749,12 +748,3 @@ datUploadEff |>
   theme_bw() +
   theme(legend.position = "bottom")
 ```
-
-
-<!-- ```{r} -->
-<!-- datUploadEff |> -->
-<!--   glm(time_sec ~ I(log(eff_size_kb)^2), -->
-<!--       data = _, , family = gaussian(link = "log")) |> -->
-<!--   summary() -->
-<!-- ``` -->
-
