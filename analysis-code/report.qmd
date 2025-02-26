@@ -2,11 +2,6 @@
 title: "Description and Analysis of the Web3 Storage Benchmarking Experiment"
 author: "György Barabás and Marko Zidarić"
 format:
-  html:
-    theme: cosmo
-    number-sections: false
-    embed-resources: true
-    code-fold: true
   pdf:
     keep-tex: false
     fontsize: 11pt
@@ -17,6 +12,11 @@ format:
     margin-bottom: 1in
     code-block-border-left: false
     number-sections: false
+  html:
+    theme: cosmo
+    number-sections: false
+    embed-resources: true
+    code-fold: true
 knitr:
   opts_chunk:
     eval: true
@@ -25,8 +25,10 @@ knitr:
     warning: false
     fig-align: center
     tbl-cap-location: bottom
+    R.options:
+      knitr.kable.NA: ""
 execute: 
-  cache: true
+  cache: false
 editor_options: 
   chunk_output_type: console
 latex-tinytex: false
@@ -83,7 +85,7 @@ dat0 <-
   bind_rows(read_rds("../data/swarm-2025-01/swarm.rds"))
 ```
 
-After we load and compile the data, we get a table with 7293 rows and 8 columns. Each row corresponds to a single download. The first ten rows are shown in @tbl-firstten:
+After we load and compile the data, we get a table with 7293 rows and 8 columns. Each row corresponds to a single download. The first ten rows are shown in @tbl-firstten. A quick note: we just calculated that the experimental design leads to 7293 downloads, yet here we have 6966 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line.
 
 ```{r}
 kabl <- function(tab) {
@@ -105,7 +107,7 @@ dat0 |>
   kabl()
 ```
 
-A quick note: we just calculated that the experimental design leads to 7293 downloads, yet here we have 6966 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. The distribution of these failures across the various parameterizations is shown in @tbl-fails.
+This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. The distribution of these failures across the various parameterizations is shown in @tbl-fails.
 
 ```{r}
 #| tbl-cap: Failed download attempts.
@@ -145,7 +147,7 @@ The data from the experiment are shown in @fig-empirical. We have a grid of pane
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 10.5
-#| fig-cap: Empirical results from the benchmarking experiment.
+#| fig-cap: Empirical results from the benchmarking experiment. Box plots are standard except no outliers are shown---that is, the thick horizontal line is the median (point that separates the top and bottom half of the data), the box around it encompasses the middle 50% of all data points, and the top/bottom whiskers show where the top/bottom 25% of the data are.
 #| label: fig-empirical
 
 
@@ -155,16 +157,17 @@ dat |>
     platform != "Swarm" ~ platform,
     TRUE                ~ str_c(platform, ", ", erasure)
   ))) |>
-  ggplot(aes(x = size_kb, y = time_sec, color = strategy)) +
-  geom_quasirandom(alpha = 0.5, shape = 1) +
+  ggplot(aes(x = size_kb, y = time_sec, color = strategy, fill = strategy,
+             group = str_c(server, pler, size_kb, strategy))) +
+  geom_boxplot(alpha = 0.3, coef = Inf) +
   scale_x_log10(breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
                 labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
-  labs(x = "File size", y = "Download time (seconds)",
+  scale_fill_manual(values = c("steelblue", "goldenrod")) +
+  labs(x = "File size", y = "Download time",
        color = "Strategy: ", fill = "Strategy: ") +
-  guides(color = guide_legend(override.aes = list(alpha = 1))) +
   facet_grid(pler ~ server) +
   theme_bw() +
   theme(legend.position = "bottom")
@@ -200,7 +203,7 @@ datErasure <-
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 6
-#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and download strategy (colors). Note that the y-axis is individually scaled for each panel. Box plots are standard except no outliers are shown---that is, the thick horizontal line is the median (point that separates the top and bottom half of the data), the box around it encompasses the middle 50% of all data points, and the top/bottom whiskers show where the top/bottom 25% of the data are. Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding.
+#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and retrieval strategy (colors). Note that the y-axis is individually scaled for each panel. Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding.
 #| label: fig-erasure-box
 
 
@@ -294,7 +297,7 @@ Before doing anything else, let us confirm that the models do capture the data w
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 10.5
-#| fig-cap: Data together with predictions from the fitted models.
+#| fig-cap: As @fig-empirical, but with the data (box plots) plotted together with predictions from the fitted models (lines).
 #| label: fig-quality
 
 
@@ -313,23 +316,26 @@ dat |>
   )) |>
   mutate(pred = map(model, \(model) predict(model, type = "response"))) |>
   unnest(c(data, pred)) |>
-  ggplot(aes(x = size_kb, color = strategy)) +
-  geom_quasirandom(aes(y = time_sec), alpha = 0.5, shape = 1) +
-  geom_line(aes(y = pred), linewidth = 1) +
+  ggplot(aes(x = size_kb, color = strategy, fill = strategy)) +
+  geom_boxplot(aes(y = time_sec, group = str_c(pler, size_kb, strategy)),
+               alpha = 0.3, coef = Inf,
+               position = position_dodge(width = 0.6)) +
+  geom_line(aes(y = pred), linewidth = 0.75,
+            position = position_dodge(width = 0.6)) +
   scale_x_log10(breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
                 labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_manual(values = c("steelblue", "goldenrod")) +
+  scale_fill_manual(values = c("steelblue", "goldenrod")) +
   labs(x = "File size", y = "Download time",
        color = "Strategy: ", fill = "Strategy: ") +
-  guides(color = guide_legend(override.aes = list(alpha = 1))) +
   facet_grid(pler ~ server) +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
 
-The models generally fit well, though they are sometimes off at small file sizes. Note however that, since the y-axis is on the log scale, a difference that appears large at small download times is not actually a relevant difference. For example, the average download time for Swarm on Server 1 at PARANOID erasure and RACE strategy is 0.177 seconds for files of 1 KB. The model's prediction is 0.566 seconds which, although more than threefold larger, is only 0.389 seconds off the empirically observed value.
+The models generally fit well, though they are sometimes off at small file sizes. Note however that, since the y-axis is on the log scale, a difference that appears large at small download times is not actually a relevant difference. For example, the average download time for Swarm on Server 1 without erasure coding is 0.648 seconds for files of 1 KB. The model's prediction is 0.185 seconds---which, although more than threefold larger, is less than half a second off the empirically-observed value.
 
 Now that we have more confidence in the models, we can use them to make out-of-sample predictions. @fig-model shows model-predicted extrapolations made from the data, averaged over the random effects.
 
@@ -387,28 +393,28 @@ Three remarks about these results are in order. First of all, the modeled curves
 
 We start from the observations made in @fig-erasure-box: except for very small files, erasure coding has a non-monotonic, U-shaped effect on download times, and while the RACE strategy is generally faster than DATA, this is no longer the case when file sizes are large and erasure coding is very strong.
 
-A clearer and statistically more interpretable version of the same figure is obtained after standardizing download times. Within each size category, we subtract from every observation the mean download time, and divide this difference by the standard deviation of the download times. This results in the *z-score* for download times: the original data, but scaled so that (i) they are dimensionless, (ii) their mean is zero, and (iii) their standard deviation is equal to one. The summary of these z-scores, broken down by erasure level and download strategy, is shown in @fig-erasure-zscore.
+A clearer and statistically more interpretable version of the same figure is obtained after standardizing download times. Within each size category, we subtract from every observation the mean download time, and divide this difference by the standard deviation of the download times. This results in the *z-score* for download times: the original data, but scaled so that (i) they are dimensionless, (ii) their mean is zero, and (iii) their standard deviation is equal to one. The summary of these z-scores, broken down by erasure level and retrieval strategy, is shown in @fig-erasure-zscore.
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 4
-#| fig-cap: Download time z-scores (y-axis; the z-score is the download time minus the mean, divided by the standard deviation) per file size category (panels), as a function of erasure level (x-axis) and download strategy (colors). Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding. Points represent the mean z-score, whishers represent the plus/minus one standard deviation range around those means. The points and error bars for the different retrieval strategies have been slightly moved sideways to reduce overlap.
+#| fig-cap: Download time z-scores (y-axis; the z-score is the download time minus the mean, divided by the standard deviation) per file size category (panels), as a function of erasure level (x-axis) and retrieval strategy (colors). Data for 500 MB files are omitted, since no such files were up- or downloaded in the absence of erasure coding. Points represent the mean z-score, whishers represent the plus/minus one standard deviation range around those means. The points and error bars for the different retrieval strategies have been slightly moved sideways to reduce visual overlap.
 #| label: fig-erasure-zscore
 
 
 datErasure |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
   summarize(m = mean(time), s = sd(time), .by = c(size, erasure, strategy)) |>
   mutate(size = as_factor(str_c("Size: ", size))) |>
   ggplot(aes(x = erasure, y = m, ymin = m - s, ymax = m + s, color = strategy)) +
-  geom_line(aes(group = str_c(size, strategy)), alpha = 0.5,
-            position = position_dodge(width = 0.6)) +
   geom_point(size = 2, position = position_dodge(width = 0.6)) +
   geom_errorbar(width = 0.3, position = position_dodge(width = 0.6)) +
   labs(color = "Strategy: ", x = "Erasure level",
-       y = "Download time z-score (mean +/- 1 std dev)") +
+       y = "Download time z-score (mean +/- std dev)") +
   facet_grid(. ~ size) +
-  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
   theme_bw() +
   theme(legend.position = "bottom",
         axis.text.x = element_text(angle = 40, vjust = 1, hjust = 1))
@@ -462,7 +468,7 @@ Let us first of all check how well these models actually fit the data. As seen i
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 6
-#| fig-cap: Model fits to the standardized (z-score) download time data, for different download strategies (color). Points and error bars are as in @fig-erasure-zscore; the curves are the predictions from the fitted models.
+#| fig-cap: Model fits to the standardized (z-score) download time data, for different download strategies (color). Points and error bars are as in @fig-erasure-zscore; the curves are the predictions from the fitted models. As in @fig-erasure-zscore, the points and error bars for the different retrieval strategies have been slightly moved sideways to reduce visual overlap.
 #| label: fig-erasure-model-fits
 
 
@@ -477,9 +483,11 @@ polyModels |>
   ) |>
   rename(Size = size, Model = model) |>
   mutate(SizeModStrat = str_c(Size, Model, strategy)) |>
-  ggplot(aes(x = erasure, y = mean, ymin = lower, ymax = upper, color = strategy)) +
-  geom_line(aes(x = erasure, y = pred, color = strategy, group = SizeModStrat),
-            alpha = 0.5, position = position_dodge(width = 0.6)) +
+  ggplot(aes(x = erasure, y = mean, color = strategy,
+             ymin = lower, ymax = upper)) +
+  geom_line(aes(x = erasure, y = pred,
+                color = strategy, group = SizeModStrat),
+            linewidth = 0.75, position = position_dodge(width = 0.6)) +
   geom_point(size = 2, position = position_dodge(width = 0.6)) +
   geom_errorbar(width = 0.3, position = position_dodge(width = 0.6)) +
   labs(color = "Strategy: ", x = "Erasure level",
@@ -535,7 +543,7 @@ polyModels |>
   theme_bw()
 ```
 
-Importantly, regardless of which model we use, @fig-erasure-model-fits shows that the local minimum of the predicted curves always lies in the range 0 to 4 that corresponds to the permissible erasure levels, from NONE to PARANOID. This is good indication that the relationship between download times and erasure levels is indeed U-shaped, but to make this conclusion stronger, we should check whether the quadratic term in the models, responsible for the minima, is in fact significantly different from zero. This does happen to be the case for *all* the considered models, yielding strong evidence that, as suspected, erasure levels have a non-monotonic effect on download times (@tbl-quadterms). All p-values are extremely low ($< 10^{-10}$) even after the most stringent (Bonferroni) correction for multiple testing.
+Importantly, regardless of which model we use, @fig-erasure-model-fits shows that the local minimum of the predicted curves always lies in the range 0 to 4 that corresponds to the permissible erasure levels, from NONE to PARANOID. This is good indication that the relationship between download times and erasure levels is indeed U-shaped, but to make this conclusion stronger, we should check whether the quadratic term in the models, responsible for the minima, is in fact significantly different from zero. This does happen to be the case for *all* the considered models, yielding strong evidence that, as suspected, erasure levels have a non-monotonic effect on download times (@tbl-quadterms). All p-values are extremely low, with $p < 10^{-9}$ even after the most stringent (Bonferroni) correction for multiple testing.
 
 ```{r}
 #| tbl-cap: Regression table for the quardatic terms in the models `sqr`, `quad`, and `cubic`.
@@ -549,23 +557,73 @@ polyModels |>
   filter(term %in% c("I((erasure_num - 2)^2)",
                      "poly(erasure_num, 2)2",
                      "poly(erasure_num, 3)2")) |>
-  mutate(adj.p.value = p.adjust(p.value, "bonferroni"),
-         .keep = "unused") |>
+  mutate(adj.p.value = p.adjust(p.value, "bonferroni"), .keep = "unused") |>
   select(!statistic) |>
   unnest(fitglance) |>
-  select(size, term, estimate, std.error, adj.r.squared, adj.p.value) |>
-  mutate(term = str_remove_all(term, " ") |> str_remove("_num")) |>
-  mutate(across(estimate | std.error | adj.r.squared, \(x) round(x, 3))) |>
+  select(size, model, quad.term = estimate, std.error,
+         adj.r.squared, adj.p.value) |>
+  mutate(adj.p.value = ifelse(adj.p.value < 1e-9, "<1e-9", adj.p.value)) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3))) |>
   kabl()
 ```
+
+After establishing that erasure coding tends to have the greatest benefit on download times at intermediate strengths, we can look at the effect of using the DATA vs. the RACE download strategies. This can be done in two steps. First, we perform a two-way ANOVA for each file size category on the data in @fig-erasure-zscore, with erasure level and download strategy varying as factors. We then look at the ANOVA tables to see whether and when these factors (or their interaction) appear to play a role. The results are in @tbl-anova. What we see is that for 1 KB files, strategy doesn't make a difference, and the interaction of erasure level and strategy probably doesn't (the Bonferroni-corrected p-value of 0.088 is not too far above the conventional cutoff of 0.05, so it is difficult to tell). This interaction term also appears to play no role for 100 KB files. Apart from these exceptional cases however, all main and interaction effects are always significant.
+
+```{r}
+#| tbl-cap: ANOVA tables for fitting the two-way ANOVA model $\text{time} \sim \text{erasure} + \text{strategy} + \text{erasure}:\text{strategy}$ for each file size category. The `signif` column offers an at-a-glance overview of the p-values, with $p < 0.001$ receiving three stars, $p < 0.01$ two stars, and $p < 0.05$ one star. All p-values have been adjusted for multiple comparisons via Bonferroni correction.
+#| label: tbl-anova
+
+datErasure |>
+  nest(data = !size) |>
+  mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
+  mutate(tidy = map(ANOVA, compose(broom::tidy, anova))) |>
+  unnest(tidy) |>
+  mutate(
+    adj.p.value = p.adjust(p.value, method = "bonferroni"),
+    .by = size
+  ) |>
+  mutate(signif = case_when(
+    adj.p.value < 0.001 ~ "***",
+    adj.p.value < 0.01  ~ "**",
+    adj.p.value < 0.05  ~ "*",
+    adj.p.value >= 0.05 & term == "Residuals" ~ NA,
+    adj.p.value >= 0.05 & term != "Residuals" ~ "-",
+  )) |>
+  rename(F.value = statistic) |>
+  select(!data & !ANOVA & !p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3))) |>
+  kabl()
+```
+
+Now that we know it is meaningful to look at the effect of retrieval strategy on download times (except for 1 KB files), we can perform a post-hoc Tukey test to actually gauge the overall quantitative effect that switching from the DATA to the RACE strategy has. @tbl-tukey shows only the DATA-to-RACE overall contrasts. As seen, there is no significance for 1 KB files. Otherwise, the estimated differences are always negative, except for 100 MB files. This is not surprising: we can see in @fig-erasure-zscore that the effect of strategy is ambiguous and depends on the interaction term---at least for the file sizes that were tested.
+
+```{r}
+#| tbl-cap: Results from Tukey's honest significant difference tests for each file size category, filtered for only the contrast between the DATA and RACE retrieval strategies. The p-values have not only been corrected in the standard way for Tukey's test, but further adjusted to account for testing across six different file size categories.
+#| label: tbl-tukey
+
+
+datErasure |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
+  nest(data = !size) |>
+  mutate(ANOVA = map(data, \(x) lm(time ~ erasure * strategy, data = x))) |>
+  mutate(tukey = map(ANOVA, compose(broom::tidy, TukeyHSD, aov))) |>
+  unnest(tukey) |>
+  mutate(adj.p.value = p.adjust(adj.p.value, method = "bonferroni"),
+         .by = size) |>
+  mutate(adj.p.value = ifelse(adj.p.value < 1e-9, "<1e-9", adj.p.value)) |>
+  select(!data & !ANOVA & !null.value & !term) |>
+  filter(contrast == "RACE-DATA") |>
+  kabl()
+```
+
+In conclusion, unless file sizes are large and erasure levels are simultaneously very strong, the RACE strategy boosts download speeds compared with the DATA strategy.
 
 
 
 ## The raw data for upload times to Swarm
 
-As mentioned before, upload times to Swarm were also measured. The data, in their current form, are not ideal: uploads have been performed using the default `deferred` method, instead of the `direct` method that is more suited to this experiment. The experiment will be repeated with `direct` uploads. Until then, the raw data are in @fig-upload-empirical.
-
-Predictably, upload times increase with file size. Also not surprisingly, the PARANOID erasure levels always result in the longest average upload times, all other things equal. What might be more surprising is that upload times do not appear to be an increasing function of erasure levels otherwise: apart from PARANOID taking the most time, the other levels appear to be more or less randomly scattered in relation to each other.
+Upload times to Swarm were also measured. Uploads have been performed using the `direct` method, instead of the default `deferred` method. The data are visualized in @fig-upload-empirical. Predictably, upload times increase with file size. Also not surprisingly, there is a more or less regular trend for higher levels of erasure coding to lead to longer upload times.
 
 ```{r}
 uploadDataFromJsonRaw <- function(jsonFile) {
@@ -607,7 +665,7 @@ datUpload <-
 #| out-width: 75%
 #| fig-width: 6
 #| fig-height: 4
-#| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding.
+#| fig-cap: Upload times to Swarm (y-axis; note the log scale), as a function of file size (x-axis; also on the log scale) and level of erasure coding (color legend on the right). Brighter colors represent higher levels of erasure coding. The box plots for a given file size are displayed side-by-side to reduce their overlap, but they are understood to all correspond to one file size.
 #| label: fig-upload-empirical
 
 
@@ -626,15 +684,37 @@ datUpload |>
   theme_bw()
 ```
 
+This within-size trend becomes clearer if we calculate the effective size of each file---that is, explicitly account for the extra file size that erasure coding induces for uploading. @tbl-erasure-summary summarizes how many chunks out of every unencrypted 128-chunk sequence are parities. Additionally, one must account for the packed-address chunks used to reference the Swarm hash tree. Let the number of packed-address chunks be $P$ and the number of chunks in the file $N$. Then, with a branching factor of 128, $P$ can be given in terms of a geometric series:
+$$
+P
+= \frac{N}{128}
+\left( 1 + \frac{1}{128} + \frac{1}{128^2} + \ldots \right)
+= \frac{N}{128} \frac{128}{127}
+= \frac{N}{127} .
+$$ {#eq-pac}
+So the size of each file should be multiplied by $1 + 1/127 = 128/127$ to account for the presence of packed-address chunks.
+
 ```{r}
-#| out-width: 75%
-#| fig-width: 6
-#| fig-height: 4
-#| fig-cap: Bla
-#| label: fig-upload-effective
+#| tbl-cap: Parity chunks per every 128-chunk block, for each erasure level.
+#| label: tbl-erasure-summary
 
 
-datUpload |>
+tribble(
+  ~`Erasure level`, ~`Parity chunks (out of 128)`,
+  "NONE",           0,
+  "MEDIUM",         9,
+  "STRONG",         21,
+  "INSANE",         31,
+  "PARANOID",       90
+) |>
+  kabl()
+```
+
+Taking into account both the parity chunks and packed-address chunks in inflating file sizes, we can calculate the exact file size for each combination of base size / erasure coding combination. The results are in @fig-upload-effective, where all box plots are placed exactly where they should be along the x-axis. From this figure, the more or less linear trend of increase within each size category is obvious.
+
+```{r}
+datUploadEff <-
+  datUpload |>
   mutate(erasure_conv = case_when(
     erasure == "NONE"     ~  0 / 128,
     erasure == "MEDIUM"   ~  9 / 128,
@@ -642,18 +722,39 @@ datUpload |>
     erasure == "INSANE"   ~ 31 / 128,
     erasure == "PARANOID" ~ 90 / 128
   )) |>
-  mutate(
-    effective_size_kb = size_kb * (1 + erasure_conv) * (1 + 128 / 127)
-  ) |>
-  ggplot(aes(x = effective_size_kb, y = time_sec, color = erasure)) +
-  geom_point() +
+  mutate(eff_size_kb = size_kb * (1 + erasure_conv) * (128 / 127))
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: As @fig-upload-empirical, but with the effective size of each file calculated, and the box plots placed exactly where they belong across the x-axis.
+#| label: fig-upload-effective
+
+
+datUploadEff |>
+  ggplot(aes(x = eff_size_kb, y = time_sec,
+             color = erasure, fill = erasure)) +
+  geom_boxplot(aes(group = str_c(erasure, eff_size_kb)),
+               alpha = 0.3, coef = Inf, width = 0.1) +
   scale_x_log10(breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
                 labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_viridis_d(option = "C", end = 0.85) +
+  scale_fill_viridis_d(option = "C", end = 0.85) +
   labs(x = "Effective file size", y = "Upload time",
-       color = "Erasure coding") +
-  theme_bw()
+       color = "Erasure coding: ", fill = "Erasure coding: ") +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
+
+
+<!-- ```{r} -->
+<!-- datUploadEff |> -->
+<!--   glm(time_sec ~ I(log(eff_size_kb)^2), -->
+<!--       data = _, , family = gaussian(link = "log")) |> -->
+<!--   summary() -->
+<!-- ``` -->
 
