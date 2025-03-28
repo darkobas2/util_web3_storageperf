@@ -709,17 +709,17 @@ tribble(
   kabl()
 ```
 
-Taking into account both the parity chunks and packed-address chunks in inflating file sizes, we can calculate the exact file size for each combination of base size / erasure coding combination. The results are in @fig-upload-effective, where all box plots are placed exactly where they should be along the x-axis. From this figure, the more or less linear trend of increase within each size category is obvious.
+Taking into account both the parity chunks and packed-address chunks in inflating file sizes, we can calculate the exact file size for each combination of base size / erasure coding combination. The results are in @fig-upload-effective, where all box plots are placed exactly where they should be along the x-axis.
 
 ```{r}
 datUploadEff <-
   datUpload |>
   mutate(erasure_conv = case_when(
-    erasure == "NONE"     ~  0 / 128,
-    erasure == "MEDIUM"   ~  9 / 128,
-    erasure == "STRONG"   ~ 21 / 128,
-    erasure == "INSANE"   ~ 31 / 128,
-    erasure == "PARANOID" ~ 90 / 128
+    erasure == "NONE"     ~ 128 / 128,
+    erasure == "MEDIUM"   ~ 128 / 119,
+    erasure == "STRONG"   ~ 128 / 107,
+    erasure == "INSANE"   ~ 128 / 97,
+    erasure == "PARANOID" ~ 128 / 38
   )) |>
   mutate(eff_size_kb = size_kb * (1 + erasure_conv) * (128 / 127))
 ```
