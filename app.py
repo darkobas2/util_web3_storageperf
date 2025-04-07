@@ -16,13 +16,13 @@ import ipinfo
 import asyncio, asyncssh, aiohttp
 import logging
 import socket
-import ipfs_api
 import tempfile
 import ssl
 import re
 import json
 import datetime
 import pytz
+import gzip
 
 from pathlib import Path
 from aiohttp import ClientSession, ClientConnectionError, ClientResponseError
@@ -46,6 +46,9 @@ prometheus_client.REGISTRY.unregister(prometheus_client.PLATFORM_COLLECTOR)
 prometheus_client.REGISTRY.unregister(prometheus_client.PROCESS_COLLECTOR)
 
 references_file = "references.json"
+references_file_onlyswarm = "references_onlyswarm.json"
+results_file = "results.json"
+results_file_onlyswarm = "results_onlyswarm.json"
 
 # Read existing references from the file
 if os.path.exists(references_file):
@@ -56,7 +59,7 @@ else:
 
 # Load configuration from file or environment variables
 def load_config(config_file):
-    global username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers, swarm_batch_id
+    global username, ipinfo_token, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers, swarm_batch_id
     with open(config_file, 'r') as f:
         config = json.load(f)
 
@@ -124,9 +127,9 @@ OLD_NO_MATCH = Counter('util_web3_storage_old_sha_fail',
                        labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
                        registry=registry)
 
-DL_TIME = Gauge('util_web3_storage_download_time',
+DL_TIME = Summary('util_web3_storage_download_time',
                        'Time spent processing request',
-                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size'],
+                       labelnames=['storage', 'server', 'latitude', 'longitude', 'size', 'dl_redundancy', 'ul_redundancy', 'dl_retrieval'],
                        registry=registry)
 
 DL_TIME_SUM = Histogram('util_web3_storage_download_time_summary',
@@ -192,7 +195,7 @@ OLD_DL_TIME_SUM = Histogram('util_web3_storage_old_download_summary',
                        ],
                        registry=registry)
 
-def save_test_results(results, filename="results.json"):
+def save_test_results(results, filename):
     """Saves test results to a JSON file.
 
     Args:
@@ -216,6 +219,22 @@ def signal_handler(sig, frame):
     push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
     sys.exit(0)  # Exit the script gracefully
 
+ipinfo_cache = {}
+
+async def get_ipinfo(ip):
+    global ipinfo_token
+
+    if ip in ipinfo_cache:
+        return ipinfo_cache[ip]
+
+    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
+    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+
+    # Cache the result
+    ipinfo_cache[ip] = server_loc
+
+    return server_loc
+
 def fetch_data(url):
     response = requests.get(url)
     response.raise_for_status()
@@ -225,17 +244,17 @@ def generate_random_string(length):
     letters = string.ascii_letters + string.digits
     return ''.join(random.choice(letters) for _ in range(length))
 
-def generate_random_json_data(size_in_kb):
-    data = {}
-    size_in_bytes = size_in_kb * 1024
-    key = generate_random_string(8)
-    overhead = len(f'{{"{key}":""}}'.encode('utf-8'))
-    value_length = size_in_bytes - overhead
-    
-    value = generate_random_string(value_length)
-    data = {key: value}
-
-    return json.dumps(data)
+#def generate_random_json_data(size_in_kb):
+#    data = {}
+#    size_in_bytes = size_in_kb * 1024
+#    key = generate_random_string(8)
+#    overhead = len(f'{{"{key}":""}}'.encode('utf-8'))
+#    value_length = size_in_bytes - overhead
+#    
+#    value = generate_random_string(value_length)
+#    data = {key: value}
+#
+#    return json.dumps(data)
 
 def generate_random_binary_data(size_in_kb):
     """
@@ -305,16 +324,37 @@ def extract_port(url):
         port = None
     return ip,port
 
-async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
+async def handle_response(response, url, attempt):
+    content = await response.read()
+
+    if 200 <= response.status <= 299:
+        if response.headers.get('Content-Encoding') == 'gzip':
+            try:
+                content = gzip.decompress(content)
+                logging.info(f"Successful gzip decompression on attempt {attempt} for {url}")
+            except gzip.BadGzipFile:
+                logging.error(f"Failed to decompress gzip response on attempt {attempt} for {url}")
+                return None
+        logging.info(f"Successful fetch on attempt {attempt} for {url}")
+        return content
+    else:
+        logging.warning(f"Unexpected status code {response.status} on attempt {attempt} for {url}")
+    return None
+
+async def http_curl(url, swarmhash, expected_sha256, max_attempts, size, redundancy):
     global args
     storage = 'Swarm'
     ip, port = extract_port(url)
 
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+    server_loc = await get_ipinfo(get_ip_from_dns(ip))
     initial_start_time = time.time()
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
+    headers = {
+        "swarm-redundancy-fallback-mode": "False",
+        "swarm-chunk-retrieval-timeout": str(args.dl_retrieval),
+        "swarm-redundancy-strategy": str(args.dl_redundancy) 
+    }
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=100000)) as session:
         for attempt in range(1, max_attempts + 1):
             try:
                 if port:
@@ -325,13 +365,13 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
                     base_url_http = f'http://{ip}/bzz/{swarmhash}'
 
                 try:
-                    async with session.get(base_url_https) as response:
+                    async with session.get(base_url_http, headers=headers) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
                 except aiohttp.ClientConnectorSSLError:
                     logging.warning(f"SSL error, retrying with HTTP for {url}")
-                    async with session.get(base_url_http) as response:
+                    async with session.get(base_url_https, headers=headers) as response:
                         content = await response.read()
                         if response.status == 200:
                             logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
@@ -340,21 +380,20 @@ async def http_curl(url, swarmhash, expected_sha256, max_attempts, size):
                 sha256sum_output = hashlib.sha256(content).hexdigest()
 
                 if sha256sum_output == expected_sha256:
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(ip), url, attempt, storage, size
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(ip), url, attempt, storage, size, swarmhash, redundancy
 
             except Exception as exc:
                 logging.error(f"HTTP error on attempt {attempt} for {url}: {exc}")
 
     total_elapsed_time = time.time() - initial_start_time
-    return 0, 'false', server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(ip), url, max_attempts, storage, size, swarmhash, redundancy
 
 async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
     global args
     storage = 'Ipfs'
     ip, port = extract_port(url)
 
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(ip))
+    server_loc = await get_ipinfo(get_ip_from_dns(ip))
     initial_start_time = time.time()
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1000)) as session:
@@ -366,41 +405,42 @@ async def http_ipfs(url, cid, expected_sha256, max_attempts, size):
                 else:
                     base_url_https = f'https://{ip}/ipfs/{cid}'
                     base_url_http = f'http://{ip}/ipfs/{cid}'
+
                 try:
-                    async with session.get(base_url_https) as response:
-                        content = await response.read()
-                        if response.status == 200:
-                            logging.info(f"Successful HTTPS fetch on attempt {attempt} for {url}")
-                except aiohttp.ClientConnectorSSLError:
-                    logging.warning(f"SSL error, retrying with HTTP for {url}")
+                    # Try fetching over HTTP first
                     async with session.get(base_url_http) as response:
-                        content = await response.read()
-                        if response.status == 200:
-                            logging.info(f"Successful HTTP fetch on attempt {attempt} for {url}")
+                        content = await handle_response(response, base_url_http, attempt)
+                        if content:
+                            sha256sum_output = hashlib.sha256(content).hexdigest()
+                            if sha256sum_output == expected_sha256:
+                                logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
+                                elapsed_time = time.time() - initial_start_time
+                                return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid, None
 
-                elapsed_time = time.time() - initial_start_time
-                #content_str = json.loads(content)  # Trim trailing newline if present
-                #sha256sum_output = hashlib.sha256(content_str.encode('utf-8')).hexdigest()
-                sha256sum_output = hashlib.sha256(content).hexdigest()
-
-                if sha256sum_output == expected_sha256:
-                    logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
-
+                except aiohttp.ClientConnectorSSLError:
+                    logging.warning(f"SSL error, retrying with HTTPS for {url}")
+                    # Retry with HTTPS in case of SSL errors
+                    async with session.get(base_url_https) as response:
+                        content = await handle_response(response, base_url_https, attempt)
+                        if content:
+                            sha256sum_output = hashlib.sha256(content).hexdigest()
+                            if sha256sum_output == expected_sha256:
+                                logging.debug(f"IPFS: SHA256 hashes match on attempt {attempt} for {url}")
+                                elapsed_time = time.time() - initial_start_time
+                                return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, cid
             except Exception as exc:
                 logging.error(f"IPFS: HTTP error on attempt {attempt} for {url}: {exc}")
 
-    total_elapsed_time = time.time() - initial_start_time
-    logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
-    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+        total_elapsed_time = time.time() - initial_start_time
+        logging.debug(f"IPFS: Failed after {max_attempts} attempts for {url}")
+        return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, cid, None
 
 async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
     global args
     storage = 'Arweave'
-    ipinfo_handler = ipinfo.getHandler(ipinfo_token)
-    server_loc = ipinfo_handler.getDetails(get_ip_from_dns(url))
+    server_loc = await get_ipinfo(get_ip_from_dns(url))
 
-    arw_file_manager = FileManager(api_url=url, wallet_path='./arw_wallet.json')
+    arw_file_manager = FileManager(gateways=url, wallet_path='./arw_wallet.json')
 
     initial_start_time = time.time()
 
@@ -417,7 +457,7 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
 
                 if sha256sum_output == expected_sha256:
                     logging.debug(f"ARW: SHA256 hashes match on attempt {attempt} for {url}")
-                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size
+                    return elapsed_time, 'true', server_loc, get_ip_from_dns(url), url, attempt, storage, size, transaction_id, None
 
             except Exception as exc:
                 pass
@@ -429,17 +469,20 @@ async def http_arw(url, transaction_id, expected_sha256, max_attempts, size):
 
     total_elapsed_time = time.time() - initial_start_time
     logging.debug(f"ARW: Failed after {max_attempts} attempts for {url}")
-    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size
+    return 0, 'false', server_loc, get_ip_from_dns(url), url, max_attempts, storage, size, transaction_id, None
 
 def upload_file(data, url_list):
-    global swarm_batch_id
+    global args,swarm_batch_id
     headers = {
-        "Content-Type": "application/json",
-        "swarm-postage-batch-id": swarm_batch_id
+        "Content-Type": "application/x-bin",
+        "swarm-redundancy-level": str(args.ul_redundancy),
+        "swarm-cache": "false",
+        "swarm-postage-batch-id": swarm_batch_id,
+        "swarm-deferred-upload": "False"
     }
-    url = f"http://{url_list[0]}"
+    url = f"https://{url_list[0]}"
 
-    response = requests.post(url=url, data=data, headers=headers, timeout=600)
+    response = requests.post(url=url, data=data, headers=headers, timeout=10000, stream=True)
     return response
 
 async def pin_json_to_ipfs(jwt, json_data, filename):
@@ -534,17 +577,21 @@ async def get_random_ip_from_servers(servers, username):
     return server_user_ips
 
 async def main(args):
-    global username, prometheus_gw, prometheus_pw, prometheus_user, ipinfo_token, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
+    global references_file, results_file, username, prometheus_gw, prometheus_pw, prometheus_user, ipfs_data_dir, swarm_ul_server, swarm_dl_servers, ipfs_ul_server, ipfs_dl_servers, arw_ul_server, arw_dl_servers
 
     repeat_count = args.repeat
     continuous = args.continuous
     results_by_storage = {"Swarm": [], "Ipfs": [], "Arweave": []}  # Initialize a dictionary to store results by storage
-    arw_file_manager = FileManager(api_url=arw_ul_server, wallet_path='./arw_wallet.json')
+    arw_file_manager = FileManager(gateways=arw_ul_server, wallet_path='./arw_wallet.json')
 
     PINATA_JWT = load_pinata_credentials()
     if not PINATA_JWT:
         logging.error("Pinata API Key or Secret not found. Exiting.")
         sys.exit(1)  # Exit if credentials are not found
+
+    if args.only_swarm:
+        references_file = references_file_onlyswarm
+        results_file = results_file_onlyswarm
 
     # Read existing references from the file
     if os.path.exists(references_file):
@@ -557,14 +604,11 @@ async def main(args):
         while True:
             for r in range(repeat_count):
 
-                #random_json = generate_random_json_data(args.size)
                 random_bin = generate_random_binary_data(args.size)
-                #sha256_hash = hashlib.sha256(random_json.encode('utf-8')).hexdigest()
                 sha256_hash = hashlib.sha256(random_bin).hexdigest()
                 logging.info(f'Generated {args.size}kb file. SHA256 hash of upload: {sha256_hash}')
 
                 start_upload_time = time.time()
-                #response = upload_file(random_json, swarm_ul_server)
                 response = upload_file(random_bin, swarm_ul_server)
                 upload_duration = time.time() - start_upload_time
 
@@ -579,64 +623,63 @@ async def main(args):
                         "hash": response_file_swarmhash, 
                         "sha256": sha256_hash,
                         "upload_time": upload_duration,  # Add upload time here
-                        "timestamp": datetime.datetime.now(pytz.utc).isoformat()
+                        "timestamp": datetime.datetime.now(pytz.utc).isoformat(),
+                        "ul_redundancy": args.ul_redundancy
                     })
                     logging.info(f'Upload to swarm duration: {upload_duration}')
                 else:
                     logging.info(f'Error: Failed to upload: {response.status_code}')
                 
 
-                # Upload to Arweave and pinata using a temporary file
-                #with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='w', suffix='.json') as tmpfile:
-                with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='wb', suffix='.bin') as tmpfile:
-                    #tmpfile.write(random_json)
-                    tmpfile.write(random_bin)
-                    tmpfile.flush()  # Ensure all data is written
+                if not args.only_swarm:
+                    # Upload to Arweave and pinata using a temporary file
+                    with tempfile.NamedTemporaryFile(dir=ipfs_data_dir, delete=False, mode='wb', suffix='.bin') as tmpfile:
+                        tmpfile.write(random_bin)
+                        tmpfile.flush()  # Ensure all data is written
 
-                    try:
-                        with open(tmpfile.name, 'rb') as f:
-                            files = {'file': f}
-                            arw_start_upload_time = time.time()
-                            arw_response = arw_file_manager.upload(tmpfile.name, tags_dict={'filename': tmpfile.name})
-                            arw_upload_duration = time.time() - arw_start_upload_time
-                            logging.info(f'Upload to arweave duration: {arw_upload_duration}')
-                            arw_transaction_id = arw_response.id
-                            if arw_transaction_id:
-                                logging.info(f'Successfully uploaded file to ARWEAVE. transaction: {arw_transaction_id}')
-                                # Store Arweave reference, upload time, and SHA256 hash
-                                references.setdefault("arweave", {}).setdefault(str(args.size), []).append({
-                                    "hash": arw_transaction_id, 
-                                    "sha256": sha256_hash,
-                                    "upload_time": arw_upload_duration,  # Add upload time here
-                                    "timestamp": datetime.datetime.now(pytz.utc).isoformat()
-                                })
-                            else:
-                                logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
-                    except Exception as e:
-                        logging.error(f"Error uploading: {str(e)}")
+                        try:
+                            with open(tmpfile.name, 'rb') as f:
+                                files = {'file': f}
+                                arw_start_upload_time = time.time()
+                                arw_response = arw_file_manager.upload(tmpfile.name, tags_dict={'filename': tmpfile.name})
+                                arw_upload_duration = time.time() - arw_start_upload_time
+                                logging.info(f'Upload to arweave duration: {arw_upload_duration}')
+                                arw_transaction_id = arw_response.id
+                                if arw_transaction_id:
+                                    logging.info(f'Successfully uploaded file to ARWEAVE. transaction: {arw_transaction_id}')
+                                    # Store Arweave reference, upload time, and SHA256 hash
+                                    references.setdefault("arweave", {}).setdefault(str(args.size), []).append({
+                                        "hash": arw_transaction_id, 
+                                        "sha256": sha256_hash,
+                                        "upload_time": arw_upload_duration,  # Add upload time here
+                                        "timestamp": datetime.datetime.now(pytz.utc).isoformat()
+                                    })
+                                else:
+                                    logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
+                        except Exception as e:
+                            logging.error(f"Error uploading: {str(e)}")
+                            
+                        # Upload to Pinata
+                        pinata_start_upload_time = time.time()
+                        pinata_response = await pin_file_to_ipfs(PINATA_JWT, tmpfile.name, f'speedtest-{args.size}kb-{r}')
+                        pinata_upload_duration = time.time() - pinata_start_upload_time
                         
-                    # Upload to Pinata
-                    pinata_start_upload_time = time.time()
-                    #pinata_response = await pin_json_to_ipfs(PINATA_JWT, random_json, f'speedtest-{args.size}kb-{r}')
-                    pinata_response = await pin_file_to_ipfs(PINATA_JWT, tmpfile.name, f'speedtest-{args.size}kb-{r}')
-                    pinata_upload_duration = time.time() - pinata_start_upload_time
-                    
-                    if pinata_response:
-                        ipfs_hash = pinata_response['IpfsHash']
-                        ipfs_pin_size = pinata_response['PinSize']
-                        ipfs_timestamp = pinata_response['Timestamp']
+                        if pinata_response:
+                            ipfs_hash = pinata_response['IpfsHash']
+                            ipfs_pin_size = pinata_response['PinSize']
+                            ipfs_timestamp = pinata_response['Timestamp']
 
-                        logging.info(f'Successfully uploaded file to Pinata. IPFS Hash: {ipfs_hash}, Pin Size: {ipfs_pin_size}, Timestamp: {ipfs_timestamp}')
-                    else:
-                        logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
+                            logging.info(f'Successfully uploaded file to Pinata. IPFS Hash: {ipfs_hash}, Pin Size: {ipfs_pin_size}, Timestamp: {ipfs_timestamp}')
+                        else:
+                            logging.warning(f"Failed to get transaction ID from Arweave response. Response: {arw_response}")
 
-                    # Store Pinata reference, upload time, and SHA256 hash
-                    references.setdefault("ipfs", {}).setdefault(str(args.size), []).append({
-                        "hash": ipfs_hash,
-                        "sha256": sha256_hash,
-                        "upload_time": pinata_upload_duration,
-                        "timestamp": ipfs_timestamp
-                    })
+                        # Store Pinata reference, upload time, and SHA256 hash
+                        references.setdefault("ipfs", {}).setdefault(str(args.size), []).append({
+                            "hash": ipfs_hash,
+                            "sha256": sha256_hash,
+                            "upload_time": pinata_upload_duration,
+                            "timestamp": ipfs_timestamp
+                        })
 
                 # Save references to JSON file after each upload
                 with open(references_file, 'w') as f:
@@ -666,33 +709,47 @@ async def main(args):
                         for entry in swarm_entries:
                             swarmhash = entry["hash"]
                             sha256_hash = entry["sha256"]
+                            redundancy = entry["ul_redundancy"]
                             for url in swarm_dl_servers:
-                                task = http_curl(url, swarmhash, sha256_hash, 15, size)
+                                task = http_curl(url, swarmhash, sha256_hash, 15, size, redundancy)
                                 swarm_tasks.append(task)
 
-                # Create download tasks for IPFS
-                if "ipfs" in references:
-                    for size, ipfs_entries in references["ipfs"].items():
-                        for entry in ipfs_entries:
-                            ipfs_hash = entry["hash"]
-                            sha256_hash = entry["sha256"]
-                            for url in ipfs_dl_servers:
-                                task = http_ipfs(url, ipfs_hash, sha256_hash, 60, size)
-                                ipfs_tasks.append(task)
+                if not args.only_swarm:
+                    # Create download tasks for IPFS
+                    if "ipfs" in references:
+                        for size, ipfs_entries in references["ipfs"].items():
+                            for entry in ipfs_entries:
+                                ipfs_hash = entry["hash"]
+                                sha256_hash = entry["sha256"]
+                                for url in ipfs_dl_servers:
+                                    task = http_ipfs(url, ipfs_hash, sha256_hash, 15, size)
+                                    ipfs_tasks.append(task)
 
-                # Create download tasks for Arweave
-                if "arweave" in references:
-                    for size, arweave_entries in references["arweave"].items():
-                        for entry in arweave_entries:
-                            arw_transaction_id = entry["hash"]
-                            sha256_hash = entry["sha256"]
-                            for url in arw_dl_servers:
-                                task = http_arw(url, arw_transaction_id, sha256_hash, 30000, size)
-                                arw_tasks.append(task)
+                    # Create download tasks for Arweave
+                    if "arweave" in references:
+                        for size, arweave_entries in references["arweave"].items():
+                            for entry in arweave_entries:
+                                arw_transaction_id = entry["hash"]
+                                sha256_hash = entry["sha256"]
+                                for url in arw_dl_servers:
+                                    task = http_arw(url, arw_transaction_id, sha256_hash, 15, size)
+                                    arw_tasks.append(task)
 
                 # Combine all tasks and run them asynchronously
                 all_tasks = arw_tasks + swarm_tasks + ipfs_tasks
-                results = await asyncio.gather(*all_tasks, return_exceptions=True)
+                #results = await asyncio.gather(*all_tasks, return_exceptions=True)
+                # Run tasks serially and append results
+                results = []
+                for task in all_tasks:
+                    result = await task
+                    results.append(result)
+            
+                # Process the results
+                #for result in results:
+                #    if isinstance(result, Exception):
+                #        print(f"Error downloading: {result}")
+                #    else:
+                #        print(f"Download successful: {result}")
 
                 fastest_time = float('inf')
                 fastest_server = None
@@ -710,7 +767,7 @@ async def main(args):
                     if isinstance(result, Exception):
                         logging.error(f'Task failed: {str(result)}')
                     else:                        
-                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, size = result
+                        elapsed_time, sha256sum_output, server_loc, server, ip, attempts, storage, size, reference, redundancy = result
                         
                         # Create a result dictionary
                         result_dict = {
@@ -721,7 +778,11 @@ async def main(args):
                             "download_time_seconds": elapsed_time,
                             "sha256_match": sha256sum_output,
                             "attempts": attempts,
-                            "size": size
+                            "size": size,
+                            "ref": reference,
+                            "dl_redundancy": args.dl_redundancy,
+                            "dl_retrieval-timeout": args.dl_retrieval,
+                            "ul_redundancy": redundancy
                         }
                         # Append the result to the corresponding storage list
                         results_by_storage[storage].append(result_dict) 
@@ -732,7 +793,7 @@ async def main(args):
 
                         if sha256sum_output == 'true':
                             logging.info("SHA256 hashes match.")
-                            DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).set(elapsed_time)
+                            DL_TIME.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size, dl_redundancy=args.dl_redundancy, ul_redundancy=redundancy, dl_retrieval=args.dl_retrieval).observe(elapsed_time)
                             DL_TIME_SUM.labels(storage=storage, server=server, latitude=server_loc.latitude, longitude=server_loc.longitude, size=size).observe(elapsed_time)
                         else:
                             logging.info("SHA256 hashes do !NOT! match.")
@@ -753,7 +814,7 @@ async def main(args):
                             slowest_ip = ip
                             slowest_attempts = attempts
 
-                        #push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+                        push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
                 logging.info("-----------------SUMMARY START-----------------------")
                 logging.info(f"Fastest time: {fastest_time} for server {fastest_server} and IP {fastest_ip} with {fastest_attempts} attempts")
                 logging.info(f"Slowest time: {slowest_time} for server {slowest_server} and IP {slowest_ip} with {slowest_attempts} attempts")
@@ -762,7 +823,7 @@ async def main(args):
 
                 logging.info("-----------------SUMMARY END-------------------------")
 
-            #push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
+            push_to_gateway(prometheus_gw, job=job_label, registry=registry, handler=pgw_auth_handler)
             for storage, storage_results in results_by_storage.items():
                 logging.info(f"Results for {storage}:")
                 for result in storage_results:
@@ -776,7 +837,7 @@ async def main(args):
                         "storage": storage,
                         "results": storage_results
                     }
-                ])
+                ], results_file)
 
             logging.info('All repeats done')
             if not continuous:
@@ -787,18 +848,21 @@ if __name__ == '__main__':
     logging.info('Welcome to web3 storage speed test')
     hostname = os.getenv('HOSTNAME', 'unknown')
     job_label = f'web3storage_speed_{hostname}'
-    load_config('config.json')
+    load_config('data/config.json')
     parser = argparse.ArgumentParser(description='Swarm speed test for Gnosis.')
     parser.add_argument('--url', type=str, default="https://bee-1.fairdatasociety.org/bzz", help='URL for uploading data')
     parser.add_argument('--size', type=int, default=100, help='size of data in kb')
+    parser.add_argument('--ul-redundancy', type=int, default=0, help='swarm upload redundancy lvl')
+    parser.add_argument('--dl-redundancy', type=int, default=0, help='swarm download redundancy lvl')
+    parser.add_argument('--dl-retrieval', type=str, default="30000ms", help='swarm download retrieval in ms')
     parser.add_argument('--repeat', type=int, help='Number of times to repeat the upload process', default=1)
     parser.add_argument('--continuous', action='store_true', help='Continuously upload chunks (overrides --repeat)')
     parser.add_argument('--upload', action='store_true', help='Upload')
     parser.add_argument('--gateway', action='store_true', help='Gateways Download')
     parser.add_argument('--download', action='store_true', help='Download')
+    parser.add_argument('--only-swarm', action='store_true', help='Test only swarm')
 
     args = parser.parse_args()
     signal.signal(signal.SIGINT, signal_handler)
     asyncio.run(main(args))
-
 
