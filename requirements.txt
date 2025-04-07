@@ -3,10 +3,8 @@ asyncssh
 aiohttp
 ipinfo
 requests
-prometheus-client
+prometheus_client
 pycryptodome
-IPFS-Toolkit
-tempfile
-ritual-arweave
-pinata-python
+ritual_arweave
 pytz
+paramiko
