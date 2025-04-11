@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LOGFILE="logfile.log"
+mkdir references
 
 {
   echo "Starting script execution at $(date)"
