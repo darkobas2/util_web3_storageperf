@@ -1,11 +1,10 @@
 library(jsonlite)
 library(tidyverse)
 library(broom)
-library(ggbeeswarm)
 
 
 
-dataFromJsonRaw <- function(jsonFile) {
+uploadDataFromJsonRaw <- function(jsonFile) {
   fromJSON(jsonFile) |>
     (`[`)(1) |>
     as_tibble() |>
@@ -14,7 +13,7 @@ dataFromJsonRaw <- function(jsonFile) {
 }
 
 
-fileSizeFromJsonRaw <- function(jsonFile) {
+uploadFileSizeFromJsonRaw <- function(jsonFile) {
   fromJSON(jsonFile) |>
     (`[`)(1) |>
     (`[[`)(1) |>
@@ -23,51 +22,68 @@ fileSizeFromJsonRaw <- function(jsonFile) {
 }
 
 
+correctedSize <- function(erasure, encryption) {
+  case_when( # File size overhead from erasure coding and packed-address chunks
+    (erasure == "NONE")     & (encryption == "unencrypted") ~ (1 + 128/128) * (128/127),
+    (erasure == "MEDIUM")   & (encryption == "unencrypted") ~ (1 + 128/119) * (128/127),
+    (erasure == "STRONG")   & (encryption == "unencrypted") ~ (1 + 128/107) * (128/127),
+    (erasure == "INSANE")   & (encryption == "unencrypted") ~ (1 + 128/97)  * (128/127),
+    (erasure == "PARANOID") & (encryption == "unencrypted") ~ (1 + 128/38)  * (128/127),
+    (erasure == "NONE")     & (encryption == "encrypted")   ~ (1 + 64/64)   * (64/63),
+    (erasure == "MEDIUM")   & (encryption == "encrypted")   ~ (1 + 64/59)   * (64/63),
+    (erasure == "STRONG")   & (encryption == "encrypted")   ~ (1 + 64/53)   * (64/63),
+    (erasure == "INSANE")   & (encryption == "encrypted")   ~ (1 + 64/48)   * (64/63),
+    (erasure == "PARANOID") & (encryption == "encrypted")   ~ (1 + 64/19)   * (64/63)
+  )
+}
 
-dat <-
-  tibble(file = Sys.glob("../data/swarm-2025-01/references/*.json")) |>
-  mutate(size_kb = map_int(file, fileSizeFromJsonRaw)) |>
-  mutate(data = map(file, dataFromJsonRaw)) |>
+
+
+datUpload <-
+  tibble(file = Sys.glob("../data/swarm-2025-04/references/*")) |>
+  mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+  mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
   select(erasure, size_kb, time_sec) |>
   arrange(erasure, size_kb, time_sec) |>
-  mutate(erasure = case_match(
+  mutate(erasure = as_factor(case_match(
     erasure,
     0 ~ "NONE",
     1 ~ "MEDIUM",
     2 ~ "STRONG",
     3 ~ "INSANE",
     4 ~ "PARANOID"
-  ))
+  )))
 
 
-dat |>
-  mutate(erasure = as_factor(erasure)) |>
-  ggplot(aes(x = as_factor(size_kb), y = time_sec, color = erasure, fill = erasure)) +
+datUpload |>
+  ggplot(aes(x = size_kb, y = time_sec, color = erasure, fill = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
   geom_boxplot(alpha = 0.3, coef = Inf) +
-  scale_x_discrete(labels = c("1 KB", "10 KB", "100 KB", "1 MB", "10 MB",
-                              "100 MB", "500 MB")) +
-  scale_y_log10(breaks = 10^(-1:3), labels = c(0.1, 1, 10, 100, 1000)) +
+  scale_x_log10(breaks = c(10, 1000, 100000),
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(0.5, 30, 1800),
+                labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_viridis_d(option = "C", end = 0.85) +
   scale_fill_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time (seconds)",
+  labs(x = "File size", y = "Upload time",
        color = "Erasure coding", fill = "Erasure coding") +
   theme_bw()
 
 
-uploadModel <-
-  dat |>
-  mutate(erasure = as_factor(erasure)) |>
+uploadModel1 <-
+  datUpload |>
   glm(time_sec ~ I(log(size_kb)^2) + erasure,
       data = _, family = gaussian(link = "log")) |>
   (\(x) { print(glance(x)); x; } )()
 
 
-dat |>
-  mutate(time_predict = predict(uploadModel, type = "response")) |>
+datUpload |>
+  mutate(time_predict = predict(uploadModel1, type = "response")) |>
   mutate(erasure = as_factor(str_c("Erasure: ", erasure))) |>
   ggplot(aes(x = size_kb)) +
-  geom_quasirandom(aes(y = time_sec), shape = 1, color = "steelblue") +
+  geom_boxplot(aes(y = time_sec, group = size_kb),
+               fill = "steelblue", color = "steelblue", alpha = 0.3, coef = Inf) +
   geom_line(aes(y = time_predict), color = "black", alpha = 0.8) +
   scale_x_log10(breaks = c(1, 100, 10000, 1000000),
                 labels = c("1 KB", "100 KB", "10 MB", "1 GB")) +
@@ -76,3 +92,21 @@ dat |>
        color = "Erasure coding", fill = "Erasure coding") +
   facet_grid(. ~ erasure) +
   theme_bw()
+
+
+datUpload |>
+  mutate(eff_size_kb = size_kb * correctedSize(erasure, "unencrypted")) |>
+  ggplot(aes(x = eff_size_kb, y = time_sec,
+             color = erasure, fill = erasure)) +
+  geom_boxplot(aes(group = str_c(erasure, eff_size_kb)),
+               alpha = 0.3, coef = Inf, width = 0.1) +
+  scale_x_log10(breaks = c(10, 1000, 100000),
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(0.5, 30, 1800),
+                labels = c("0.5 s", "1 m", "30 m")) +
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  scale_fill_viridis_d(option = "C", end = 0.85) +
+  labs(x = "Effective file size", y = "Upload time",
+       color = "Erasure coding: ", fill = "Erasure coding: ") +
+  theme_bw() +
+  theme(legend.position = "bottom")

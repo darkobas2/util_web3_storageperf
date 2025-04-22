@@ -1,3 +1,8 @@
+# Path to folder with the experiment whose results we are putting in a tidy table:
+clargs <- commandArgs(trailingOnly = TRUE)
+if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-04/"
+
+
 library(jsonlite)
 library(tidyverse)
 library(fs)
@@ -102,20 +107,14 @@ prepareData <- function(jsonFile, configFile) {
 
 
 
-# Path to folder with the experiment whose results we are putting in a tidy table:
-path <- "../data/swarm-2025-01/"
-
 dat <-
   tibble(file = Sys.glob(str_c(path, "results_onlyswarm*.json"))) |>
-  mutate(conf = "../data/config.json") |>
+  mutate(conf = str_c(path, "config.json")) |>
   mutate(data = map2(file, conf, prepareData)) |>
   unnest(data) |>
   select(!file & !conf) |>
   select(platform, size_kb, server, erasure, strategy,
          time_sec, sha256_match, attempts)
-
-write_rds(dat, str_c(path, "swarm.rds"), compress = "xz")
-
 
 
 dat |> count(sha256_match)
@@ -129,6 +128,7 @@ dat |> count(strategy)
 dat |> count(platform, server, size_kb, erasure, strategy) |> print(n = Inf)
 dat |> filter(erasure != "NONE" & strategy == "NONE")
 
+
 dat |>
   filter(sha256_match) |>
   select(platform, server, size_kb, erasure, strategy, time_sec) |>
@@ -138,3 +138,7 @@ dat |>
   arrange(platform, server, size_kb, erasure, strategy, time_sec) |>
   count(platform, server, size_kb, erasure, strategy) |>
   print(n = Inf)
+
+
+dat |>
+  write_rds(str_c(path, "swarm.rds"), compress = "xz")
