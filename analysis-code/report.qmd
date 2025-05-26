@@ -545,7 +545,7 @@ polyModels |>
 Importantly, regardless of which model we use, @fig-erasure-model-fits shows that the local minimum of the predicted curves always lies in the range 0 to 4 that corresponds to the permissible erasure levels, from NONE to PARANOID. This is good indication that the relationship between download times and erasure levels is indeed U-shaped, but to make this conclusion stronger, we should check whether the quadratic term in the models, responsible for the minima, is in fact significantly different from zero. This does happen to be the case for *all* the considered models, yielding strong evidence that, as suspected, erasure levels have a non-monotonic effect on download times (@tbl-quadterms). All p-values are extremely low, with $p < 10^{-9}$ even after the most stringent (Bonferroni) correction for multiple testing.
 
 ```{r}
-#| tbl-cap: Regression table for the quardatic terms in the models `sqr`, `quad`, and `cubic`.
+#| tbl-cap: Regression table for the quadratic terms in the models `sqr`, `quad`, and `cubic`.
 #| label: tbl-quadterms
 
 
