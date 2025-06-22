@@ -1,0 +1,217 @@
+{
+    "swarm": {
+        "10000": [
+            {
+                "hash": "622fecff2cf6000c4d113c3373f1c0499461d6973a02395abc78089cd57abace",
+                "sha256": "ec96048f2175ebbdf00397cdc1bdd13960dcf29bd2d7b8d6336fccc14cf87934",
+                "upload_time": 9.846555471420288,
+                "timestamp": "2025-06-20T00:01:13.838611+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "dedafa6f14b05cd6dbc33798dfce655d918cb18e3c91c9399341dd26f12924f3",
+                "sha256": "45a6a3d8dda5ebc74c76a6574875d0ffb95eda1ce36d4a61a01642b8005dc8a5",
+                "upload_time": 10.017909526824951,
+                "timestamp": "2025-06-20T00:01:23.895410+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "7874eb6bb9c9d42adff1fb27726fdf013cc2f097bd905f317ef2358d9b0359e8",
+                "sha256": "9267e8261779d6d2bc4905c726df71c1429f3f459572b6a9c4d139e59617ede2",
+                "upload_time": 9.807840585708618,
+                "timestamp": "2025-06-20T00:01:33.764284+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "017a89318f6d5969d5db5441c77f2c750c2de1645cb11466457ca0dd0d14ccdc",
+                "sha256": "102993aa256e690742348dcaea856f709695f013a7075db559b7864e8ecc9c59",
+                "upload_time": 10.894395589828491,
+                "timestamp": "2025-06-20T00:01:44.725857+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "00ddaf170791298008467d385df306c4f978e7dfae0555a24b0a7636621c6d3d",
+                "sha256": "ff424894f19a6be9dd4f6e66b52a1ab7ca1144efdd4da23b51ebef556d14c363",
+                "upload_time": 9.924660682678223,
+                "timestamp": "2025-06-20T00:01:54.709064+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "b4518dfb40886cba96bb69d1178bf0ab1cbc0201cdeb510ae1b6e6763cd5f7a7",
+                "sha256": "7953cf3fe06cf949b76edb8e6d306e895f900e8c5f678d8d4969080f904ef380",
+                "upload_time": 10.9572114944458,
+                "timestamp": "2025-06-20T00:02:05.724628+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "5aa4d8128bb70f3b93a8391b80d6739ef5508cf89fff05774a51778c3a3caab2",
+                "sha256": "2cbfed6f4dfe352f4f6ffe0bc9fbcd7ca068448d4b2a6a4b132f2c96d4e1a909",
+                "upload_time": 9.920926332473755,
+                "timestamp": "2025-06-20T00:02:15.704184+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "f4b4ca1039599cf56050ca07f6265ab45437675ea5fea3cc73aca3f9a0e8741c",
+                "sha256": "b6ed7fe3467e6488dd810289df2680b395f621e6920924e4ab3271ccf5a91eb2",
+                "upload_time": 8.059847831726074,
+                "timestamp": "2025-06-20T00:02:23.814253+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "19ed089600799e5f2bdc1402083472dca0b5db2b220206ace41f64597ad1cc66",
+                "sha256": "6c82f8eb56a5d68211a7063b260ac3432c0f309fb8cbcd706bfbea230d511c0c",
+                "upload_time": 10.479939460754395,
+                "timestamp": "2025-06-20T00:02:34.355448+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "716721094990ab6f9218c4b01737938b988ae3c32e89bafb057e05a6292e710e",
+                "sha256": "e891654f49424419ec290598a75d870094e908fdd3d56961e8934afb5c72e8ae",
+                "upload_time": 10.386057138442993,
+                "timestamp": "2025-06-20T00:02:44.799193+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "1adda18b1f63db623ce5bf17e0e4e94c3ac7ea6ae96c9852bd1a6eecdaa7fbcf",
+                "sha256": "e6c5a0eb2e89a16dc1abdabe884323503676dad871a860640d53b5f8738091d7",
+                "upload_time": 8.65559434890747,
+                "timestamp": "2025-06-20T00:02:53.514000+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "a6ef7a01e08ee01da46957ec2299caff8addd70cded2dee06f895ed8baeac730",
+                "sha256": "ddb0aa814b47f5373332d87254296b5e602aeb0a31183b6889ef532c9774bdf3",
+                "upload_time": 10.24782943725586,
+                "timestamp": "2025-06-20T00:03:03.819074+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "1b756f684e6493538602a86db9a042d6ce959871ee9fdd0fe5d036853cf71b44",
+                "sha256": "220df9c4e87c0f885559b422d50baab6af8580adbafbdf3033d17078c86c099a",
+                "upload_time": 10.192789793014526,
+                "timestamp": "2025-06-20T00:03:14.063176+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "e93dad8b20b9e988f99b0a6ac16e602b5db1eb374b6db546285f09d7ad0d9ac8",
+                "sha256": "ec177d1c44c0261b4fed06b35311f74d3107615c7bbc83bd441c9451d18e1046",
+                "upload_time": 8.484935760498047,
+                "timestamp": "2025-06-20T00:03:22.606463+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "02aecfc92d062838c12587cdb949426ed4927bca75ead566dae668b3ecb12061",
+                "sha256": "fc0cc8b564a27229755533fa2dd763d40f9431efd518b2f15d6c2997e44da7de",
+                "upload_time": 9.684898614883423,
+                "timestamp": "2025-06-20T00:03:32.351917+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "7146ffbf1ad03567c936b3aef15e9120de16ebf7a7c35b97306e24384cb96712",
+                "sha256": "3537084ff30a2f564e63cc3a06ed2b2b41a22eb6ef1a073a1288b21fc3c09e32",
+                "upload_time": 9.974939823150635,
+                "timestamp": "2025-06-20T00:03:42.385531+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "8412c8dfd06779ce90269dd8b610ac4839463ee11e7c3dbb216cf94ca1b9e851",
+                "sha256": "9716d0b292e3e131b1bd579476afaf92ef74a53870f50fcc39ca11da7f0fe566",
+                "upload_time": 9.649002313613892,
+                "timestamp": "2025-06-20T00:03:52.092289+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "c5f7631599a2b8237bebef5d3ac890d90404ad4f27ceb6cfe95dcd7265cc18bd",
+                "sha256": "ae71a36428245fbb2f477260211ec6ac911f8bb90a9dccef4ff0e2c1a4236fe7",
+                "upload_time": 12.705848455429077,
+                "timestamp": "2025-06-20T00:04:04.855419+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "05123d9fd391a112548f044af5603f32a29b96796999ac14a5fd56db69c06840",
+                "sha256": "74bf0ccc3f27ac9322827ab797853799c7f77cb249e4afd9b93afad65f5b8a8c",
+                "upload_time": 6.149733543395996,
+                "timestamp": "2025-06-20T00:04:11.037999+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "954af88cfd5105fb331fd1762e818940f226d9ccc492fb875a84b9a75b3b9812",
+                "sha256": "9a9c79476368048f27edf3219878aa981448e88f4949dfcbe0c4d275d4e27986",
+                "upload_time": 6.654912948608398,
+                "timestamp": "2025-06-20T00:04:17.740655+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "9ce16ec3fb87e38b99ef6fda99f11cb1eb4debf087e6e1d9e3dfef4df222292d",
+                "sha256": "a44330cf568f5518781757c05047fb081483a5446fe9d78298c68063447e800c",
+                "upload_time": 10.747318029403687,
+                "timestamp": "2025-06-20T00:04:28.548684+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "43738674526f0add8f9ecfbd00fcffc68e2b3b566b8c7d87078eb13b30c8cfc5",
+                "sha256": "52695ec0cd112b95ed0a7e082efa16235c062003b0c3c89120ace72979795c5b",
+                "upload_time": 11.29312539100647,
+                "timestamp": "2025-06-20T00:04:39.901714+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "6766ffe250ea5252c5be90f93db124e8f2a0a88e55fbc86fbbe4706926232706",
+                "sha256": "f80fc67289c972d1567f21186d534ddf757623bce3aa4e187bcc97179775a62b",
+                "upload_time": 10.280200242996216,
+                "timestamp": "2025-06-20T00:04:50.238438+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "61f0069828252b25c5e8502d6db40485e66f54196b091a198a88a935f251cb73",
+                "sha256": "b44904e9ec85b5ac93c974fb3eaabfac48633581aa055286d840aaa776c36807",
+                "upload_time": 11.207613229751587,
+                "timestamp": "2025-06-20T00:05:01.511832+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "dd59c407ac8cabff9b000dcaa6a323636fda35d67438e28714b1a4597138a4e1",
+                "sha256": "42c0fe0553c6a070735be2b4147feb48726de929afe50dc09309c553ba370218",
+                "upload_time": 8.180457830429077,
+                "timestamp": "2025-06-20T00:05:09.751113+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "8230f5f5b819f19f33edf75fc67199b52b584136e1ec9d4fc82e949af86cf958",
+                "sha256": "648d644dbaefbfd3244a9028544904183f36b901c9b7cd605ed73444f951f00b",
+                "upload_time": 8.408624410629272,
+                "timestamp": "2025-06-20T00:05:18.217187+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "b9d159ac7f9689cd4804bec6ccdcc8d542d6441eb56492ac06e7a45ad6b4ceee",
+                "sha256": "0487b97cab41d199bf2c8eba2a3c531326c541ea868005dd371e021848a4f16a",
+                "upload_time": 10.391435146331787,
+                "timestamp": "2025-06-20T00:05:28.666675+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "bdb3ec8b7a3290fdb742684802992169f7d0a01b233e58c492907aea8a0f3d80",
+                "sha256": "022b662fc08f1c1abc90b992d6e0113257b97b69a53e55e27c716f6b0113e430",
+                "upload_time": 7.519949197769165,
+                "timestamp": "2025-06-20T00:05:36.244853+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "08e862ecc6d917efbd3f0ebe1cacb0641b7b6cb553faafae0cc4e943f0607b10",
+                "sha256": "5910503d06649d7de70538135b64dd6d47c3216fefe90cd37e27941b4c544d8e",
+                "upload_time": 9.195924997329712,
+                "timestamp": "2025-06-20T00:05:45.499422+00:00",
+                "ul_redundancy": 1
+            },
+            {
+                "hash": "6d184b317b3895a34753e8128a62b397c1fda30fc7502141d54c6759b67ac617",
+                "sha256": "1bfa28d18d49951455bf231fbdaa4cdda87fd7976130569f43d5713d4f0c2524",
+                "upload_time": 10.999988794326782,
+                "timestamp": "2025-06-20T00:05:56.558668+00:00",
+                "ul_redundancy": 1
+            }
+        ]
+    },
+    "ipfs": {}
+}
