@@ -1,0 +1,287 @@
+---
+title: "The latest Benchmarking Experiment -- Quick Summary"
+author: "Gyuri Barabás"
+format:
+  pdf:
+    keep-tex: false
+    fontsize: 11pt
+    papersize: a4paper
+    margin-left: 1in
+    margin-right: 1in
+    margin-top: 1in
+    margin-bottom: 1in
+    code-block-border-left: false
+    number-sections: false
+  html:
+    theme: cosmo
+    number-sections: false
+    embed-resources: true
+    code-fold: true
+knitr:
+  opts_chunk:
+    eval: true
+    echo: false
+    message: false
+    warning: false
+    fig-align: center
+    tbl-cap-location: bottom
+    R.options:
+      knitr.kable.NA: ""
+execute: 
+  cache: true
+editor_options: 
+  chunk_output_type: console
+latex-tinytex: false
+---
+
+
+
+```{r}
+library(jsonlite) # Converting JSON files to data frames
+library(tidyverse) # Efficient data manipulation and plotting
+library(lme4) # Fitting generalized linear mixed models
+```
+
+The latest benchmarking was run under the same settings as the one that was run before in April. The one difference is that uploading files of 100MB or larger was not possible.^[Information from Marko Zidaric.] So instead of 100MB files, we had 50MB ones in this run of the experiment.
+
+```{r}
+readDownloadData <- function(file) {
+  read_rds(file) |>
+    # Remove failed downloads:
+    filter(sha256_match) |>
+    # Remove columns that are no longer needed:
+    select(!sha256_match & !attempts) |>
+    # Convert erasure and strategy to factors, for easier handling later:
+    mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "STRONG",
+                                 "INSANE", "PARANOID")) |>
+    mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
+    # Keep rows in a logical order:
+    arrange(platform, erasure, strategy, size_kb, server)
+}
+
+
+datOld <-
+  readDownloadData("../data/swarm-2025-04/swarm.rds") |>
+  filter(size_kb <= 100000) |>
+  mutate(dataset = "2025-04", .before = 1)
+
+datNew <-
+  readDownloadData("../data/swarm-2025-06/swarm.rds") |>
+  mutate(dataset = "2025-06", .before = 1)
+
+dat <- bind_rows(datOld, datNew)
+```
+
+We can visually compare download times across the April (2025-04) and June (2025-06, that just finished yesterday) runs. We do this both for the `DATA` (@fig-compare-data) and `RACE` (@fig-compare-race) retrieval strategies.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 9
+#| fig-cap: Comparison of the April (blue, 2025-04) and June (yellow, 2025-06) benchmarking experiments, for the `DATA` retrieval strategy. Box plots are standard except no outliers are shown---that is, the thick horizontal line is the median (point that separates the top and bottom half of the data), the box around it encompasses the middle 50% of all data points, and the top/bottom whiskers show where the top/bottom 25% of the data are.
+#| label: fig-compare-data
+
+
+downloadTimeComparePlot <- function(dat, strat = "DATA") {
+  dat |>
+    filter(strategy %in% c("NONE", strat)) |>
+    ggplot(aes(x = size_kb, y = time_sec, color = dataset, fill = dataset,
+               group = str_c(server, erasure, size_kb, dataset))) +
+    geom_boxplot(alpha = 0.3, coef = Inf) +
+    scale_x_log10(breaks = c(10, 1000, 100000),
+                  labels = c("10 KB", "1 MB", "100 MB")) +
+    scale_y_log10(breaks = c(0.5, 30, 1800),
+                  labels = c("0.5 s", "1 m", "30 m")) +
+    scale_color_manual(values = c("steelblue", "goldenrod")) +
+    scale_fill_manual(values = c("steelblue", "goldenrod")) +
+    labs(x = "File size", y = "Download time",
+         color = "Dataset: ", fill = "Dataset: ") +
+    facet_grid(erasure ~ server) +
+    theme_bw() +
+    theme(legend.position = "bottom")
+}
+
+downloadTimeComparePlot(dat, strat = "DATA")
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 9
+#| fig-cap: As @fig-compare-data, but for the `RACE` retrieval strategy.
+#| label: fig-compare-race
+
+
+downloadTimeComparePlot(dat, strat = "RACE")
+```
+
+The results from the two runs look quite similar. A closer look, by fitting models to the data and comparing model predictions, reveals faster download times under the `RACE` retrieval strategy for the June experiment. In turn, for the `DATA` strategy, the June experiment performs (slightly) better for large files and slightly worse for small files than the previous run in April. @fig-compare-models shows these model comparisons. The model is the same that was used earlier for Swarm:
+$$
+\begin{aligned}
+(\text{time})_i
+= \exp&\big[ \beta_0
++ \beta_1 \log^2(\text{size})_i
++ \beta_2 (\text{erasure})_i
++ \beta_3 (\text{strategy})_i
+\\ & + \beta_4 \log^2(\text{size})_i (\text{erasure})_i
++ \beta_5 \log^2(\text{size})_i (\text{strategy})_i
++ \beta_6 (\text{erasure})_i (\text{strategy})_i
+\\ & + \mu_{0,\text{v}(i)}
++ \mu_{1,\text{v}(i)}\log^2(\text{size})_i
++ \mu_{2,\text{v}(i)}(\text{erasure})_i \big] ,
+\end{aligned}
+$$ {#eq-model-Swarm}
+where $(\text{time})_i$ and $(\text{size})_i$ are respectively the $i$th download time (in seconds) and file size (in kilobytes) in the data, $\beta_0, \ldots, \beta_6$ are regression coefficients, and $\mu_{k,\text{v}(i)}$ are random effects where $\text{v}(i)$ returns 1, 2, or 3, depending on which server the $i$th data point was downloaded from.
+
+```{r}
+modelSwarm <- function(dat) {
+  dat |>
+    mutate(
+      strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))
+    ) |>
+    mutate(erasure = case_match(
+      erasure,
+      "NONE"     ~ 0,
+      "MEDIUM"   ~ 1,
+      "STRONG"   ~ 2,
+      "INSANE"   ~ 3,
+      "PARANOID" ~ 4
+    )) |>
+    glmer(time_sec ~ I(log(size_kb)^2) + erasure + strategy +
+            I(log(size_kb)^2):erasure + I(log(size_kb)^2):strategy +
+            erasure:strategy + (1 + I(log(size_kb)^2) + erasure | server),
+          data = _, family = gaussian(link = "log"))
+}
+```
+
+```{r}
+modelOld <- modelSwarm(datOld)
+modelNew <- modelSwarm(datNew)
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 9
+#| fig-cap: Comparison of model fits to the April (blue, 2025-04) and June (yellow, 2025-06) benchmarking experiments.
+#| label: fig-compare-models
+
+
+dat |>
+  mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
+  mutate(erasure_text = erasure, .after = erasure) |>
+  mutate(erasure = case_match(
+    erasure,
+    "NONE"     ~ 0,
+    "MEDIUM"   ~ 0.01,
+    "STRONG"   ~ 0.05,
+    "INSANE"   ~ 0.1,
+    "PARANOID" ~ 0.5
+  )) |>
+  distinct(dataset, erasure, erasure_text, strategy) |>
+  crossing(size_kb = 10^seq(log10(1), log10(5e6), l = 201)) |>
+  (\(x) mutate(x, pred = case_when(
+    dataset == "2025-04" ~ predict(modelOld, x, re.form = NA, type = "response"),
+    dataset == "2025-06" ~ predict(modelNew, x, re.form = NA, type = "response")
+  )))() |>
+  mutate(erasure = as_factor(erasure_text), .keep = "unused") |>
+  ggplot(aes(x = size_kb, y = pred, color = dataset)) +
+  geom_line() +
+  scale_x_log10(breaks = c(1e1, 1e3, 1e5),
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(1, 60, 3600),
+                labels = c("1s", "1m", "1h")) +
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  labs(x = "File size", y = "Predicted download time", color = "Dataset") +
+  facet_grid(erasure ~ strategy) +
+  theme_bw()
+```
+
+We observe a similar trend in upload speeds: they are nearly the same across the April and June runs, but June is slightly faster (@fig-uploads).
+
+```{r}
+uploadDataFromJsonRaw <- function(jsonFile) {
+  fromJSON(jsonFile) |>
+    (`[`)(1) |>
+    as_tibble() |>
+    unnest(swarm) |>
+    rename(erasure = ul_redundancy, time_sec = upload_time)
+}
+
+
+uploadFileSizeFromJsonRaw <- function(jsonFile) {
+  fromJSON(jsonFile) |>
+    (`[`)(1) |>
+    (`[[`)(1) |>
+    names() |>
+    (\(x) if (length(x) > 0) as.integer(x) else NA_integer_)()
+}
+
+
+correctedSize <- function(erasure, encryption) {
+  case_when( # File size overhead from erasure coding and packed-address chunks
+    (erasure == "NONE")     & (encryption == "unencrypted") ~ (128/128) * (128/127),
+    (erasure == "MEDIUM")   & (encryption == "unencrypted") ~ (128/119) * (128/127),
+    (erasure == "STRONG")   & (encryption == "unencrypted") ~ (128/107) * (128/127),
+    (erasure == "INSANE")   & (encryption == "unencrypted") ~ (128/97)  * (128/127),
+    (erasure == "PARANOID") & (encryption == "unencrypted") ~ (128/38)  * (128/127),
+    (erasure == "NONE")     & (encryption == "encrypted")   ~ (64/64)   * (64/63),
+    (erasure == "MEDIUM")   & (encryption == "encrypted")   ~ (64/59)   * (64/63),
+    (erasure == "STRONG")   & (encryption == "encrypted")   ~ (64/53)   * (64/63),
+    (erasure == "INSANE")   & (encryption == "encrypted")   ~ (64/48)   * (64/63),
+    (erasure == "PARANOID") & (encryption == "encrypted")   ~ (64/19)   * (64/63)
+  )
+}
+
+
+dataFromRefFiles <- function(dataset) {
+  tibble(file = Sys.glob(str_c("../data/swarm-", dataset, "/references/*"))) |>
+  mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+  mutate(data = map(file, uploadDataFromJsonRaw)) |>
+  unnest(data) |>
+  select(erasure, size_kb, time_sec) |>
+  arrange(erasure, size_kb, time_sec) |>
+  mutate(erasure = as_factor(case_match(
+    erasure,
+    0 ~ "NONE",
+    1 ~ "MEDIUM",
+    2 ~ "STRONG",
+    3 ~ "INSANE",
+    4 ~ "PARANOID"
+  )))
+}
+
+
+datUpload <-
+  tibble(dataset = c("2025-04", "2025-06")) |>
+  mutate(data = map(dataset, dataFromRefFiles)) |>
+  unnest(data)
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: Upload times in the April (left panel) and June (right panel) benchmarking experiments.
+#| label: fig-uploads
+
+
+datUpload |>
+  mutate(eff_size_kb = size_kb * correctedSize(erasure, "unencrypted")) |>
+  ggplot(aes(x = eff_size_kb, color = erasure, fill = erasure)) +
+  geom_boxplot(aes(y = time_sec, group = str_c(erasure, eff_size_kb)),
+               alpha = 0.3, width = 0.2) +
+  scale_x_log10(breaks = c(10, 1000, 100000),
+                labels = c("10 KB", "1 MB", "100 MB")) +
+  scale_y_log10(breaks = c(0.5, 30, 1800),
+                labels = c("0.5 s", "1 m", "30 m")) +
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  scale_fill_viridis_d(option = "C", end = 0.85) +
+  labs(x = "Effective file size", y = "Upload time",
+       color = "Erasure coding: ", fill = "Erasure coding: ") +
+  facet_grid(. ~ dataset) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+Since the two experiments were run under the same release version, the differences between them are caused purely by the network, and its number and distribution of nodes.
