@@ -252,7 +252,7 @@ $$
 + \beta_6 (\text{erasure})_i (\text{strategy})_i
 \\ & + \mu_{0,\text{v}(i)}
 + \mu_{1,\text{v}(i)}\log^2(\text{size})_i
-+ \mu_{1,\text{v}(i)}(\text{erasure})_i \big] .
++ \mu_{2,\text{v}(i)}(\text{erasure})_i \big] .
 \end{aligned}
 $$ {#eq-model-Swarm}
 In words, we predict $\log(\text{time})$ using the main effects of $\log^2(\text{size})$, erasure level, and strategy, and all their possible two-way interactions. Plus we add a random intercept and slope (for both $\log^2(\text{size})$ and erasure level) based on server identity. In this model, erasure level is not a factor but a covariate reflecting the corresponding baseline probability of a faulty chunk retrieval event: it is taken as 0 for no erasure coding, as 1 for MEDIUM, 2 for STRONG, 3 for INSANE, and 4 for PARANOID. (Model selection indicated this as the best choice among a few other candidates, such as using the probability of individual chunk failure or using the fraction of chunks that are parity chunks.)
