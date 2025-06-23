@@ -65,24 +65,26 @@ datUpload <-
 datUpload |>
   ggplot(aes(x = size_kb, y = time_sec, color = erasure, fill = erasure,
              group = as_factor(str_c(size_kb, erasure)))) +
-  geom_boxplot(alpha = 0.3, coef = Inf) +
-  scale_x_log10(breaks = c(10, 1000, 100000),
+  geom_boxplot(alpha = 0.3) +
+  scale_x_log10(limits = c(0.5, 1e6),
+                breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
-  scale_y_log10(breaks = c(0.5, 30, 1800),
+  scale_y_log10(limits = c(0.08, 2300),
+                breaks = c(0.5, 30, 1800),
                 labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_viridis_d(option = "C", end = 0.85) +
   scale_fill_viridis_d(option = "C", end = 0.85) +
   labs(x = "File size", y = "Upload time",
        color = "Erasure coding", fill = "Erasure coding") +
-  coord_cartesian(xlim = c(1, 1e6), ylim = c(0.08, 2300)) +
   theme_bw()
 
 
 uploadModel1 <-
   datUpload |>
   glm(time_sec ~ I(log(size_kb)^2) + erasure,
-      data = _, family = gaussian(link = "log")) |>
-  (\(x) { print(glance(x)); x; } )()
+      data = _, family = gaussian(link = "log"))
+glance(uploadModel1)
+summary(uploadModel1)
 
 
 datUpload |>
@@ -101,12 +103,22 @@ datUpload |>
   theme_bw()
 
 
+uploadModel2 <-
+  datUpload |>
+  mutate(eff_size_kb = size_kb * correctedSize(erasure, "unencrypted")) |>
+  glm(time_sec ~ I(log(eff_size_kb)^2) + erasure,
+      data = _, family = gaussian(link = "log"))
+glance(uploadModel2)
+summary(uploadModel2)
+
+
 datUpload |>
   mutate(eff_size_kb = size_kb * correctedSize(erasure, "unencrypted")) |>
-  ggplot(aes(x = eff_size_kb, y = time_sec,
-             color = erasure, fill = erasure)) +
-  geom_boxplot(aes(group = str_c(erasure, eff_size_kb)),
+  mutate(pred = predict(uploadModel2, type = "response")) |>
+  ggplot(aes(x = eff_size_kb, color = erasure, fill = erasure)) +
+  geom_boxplot(aes(y = time_sec, group = str_c(erasure, eff_size_kb)),
                alpha = 0.3, width = 0.1) +
+  geom_line(aes(y = pred)) +
   scale_x_log10(breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
@@ -115,6 +127,5 @@ datUpload |>
   scale_fill_viridis_d(option = "C", end = 0.85) +
   labs(x = "Effective file size", y = "Upload time",
        color = "Erasure coding: ", fill = "Erasure coding: ") +
-  coord_cartesian(xlim = c(1, 2e6), ylim = c(0.08, 2300)) +
   theme_bw() +
   theme(legend.position = "bottom")
