@@ -18,30 +18,36 @@ uploadFileSizeFromJsonRaw <- function(jsonFile) {
     (`[`)(1) |>
     (`[[`)(1) |>
     names() |>
-    as.integer()
+    (\(x) if (length(x) > 0) as.integer(x) else NA_integer_)()
 }
 
 
 correctedSize <- function(erasure, encryption) {
   case_when( # File size overhead from erasure coding and packed-address chunks
-    (erasure == "NONE")     & (encryption == "unencrypted") ~ (1 + 128/128) * (128/127),
-    (erasure == "MEDIUM")   & (encryption == "unencrypted") ~ (1 + 128/119) * (128/127),
-    (erasure == "STRONG")   & (encryption == "unencrypted") ~ (1 + 128/107) * (128/127),
-    (erasure == "INSANE")   & (encryption == "unencrypted") ~ (1 + 128/97)  * (128/127),
-    (erasure == "PARANOID") & (encryption == "unencrypted") ~ (1 + 128/38)  * (128/127),
-    (erasure == "NONE")     & (encryption == "encrypted")   ~ (1 + 64/64)   * (64/63),
-    (erasure == "MEDIUM")   & (encryption == "encrypted")   ~ (1 + 64/59)   * (64/63),
-    (erasure == "STRONG")   & (encryption == "encrypted")   ~ (1 + 64/53)   * (64/63),
-    (erasure == "INSANE")   & (encryption == "encrypted")   ~ (1 + 64/48)   * (64/63),
-    (erasure == "PARANOID") & (encryption == "encrypted")   ~ (1 + 64/19)   * (64/63)
+    (erasure == "NONE")     & (encryption == "unencrypted") ~ (128/128) * (128/127),
+    (erasure == "MEDIUM")   & (encryption == "unencrypted") ~ (128/119) * (128/127),
+    (erasure == "STRONG")   & (encryption == "unencrypted") ~ (128/107) * (128/127),
+    (erasure == "INSANE")   & (encryption == "unencrypted") ~ (128/97)  * (128/127),
+    (erasure == "PARANOID") & (encryption == "unencrypted") ~ (128/38)  * (128/127),
+    (erasure == "NONE")     & (encryption == "encrypted")   ~ (64/64)   * (64/63),
+    (erasure == "MEDIUM")   & (encryption == "encrypted")   ~ (64/59)   * (64/63),
+    (erasure == "STRONG")   & (encryption == "encrypted")   ~ (64/53)   * (64/63),
+    (erasure == "INSANE")   & (encryption == "encrypted")   ~ (64/48)   * (64/63),
+    (erasure == "PARANOID") & (encryption == "encrypted")   ~ (64/19)   * (64/63)
   )
 }
 
 
 
-datUpload <-
-  tibble(file = Sys.glob("../data/swarm-2025-04/references/*")) |>
+# Any faulty references?
+tibble(file = Sys.glob("../data/swarm-2025-06/references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+  filter(is.na(size_kb))
+
+datUpload <-
+  tibble(file = Sys.glob("../data/swarm-2025-06/references/*")) |>
+  mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+  drop_na() |> # Drop any faulty references
   mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
   select(erasure, size_kb, time_sec) |>
@@ -68,6 +74,7 @@ datUpload |>
   scale_fill_viridis_d(option = "C", end = 0.85) +
   labs(x = "File size", y = "Upload time",
        color = "Erasure coding", fill = "Erasure coding") +
+  coord_cartesian(xlim = c(1, 1e6), ylim = c(0.08, 2300)) +
   theme_bw()
 
 
@@ -99,7 +106,7 @@ datUpload |>
   ggplot(aes(x = eff_size_kb, y = time_sec,
              color = erasure, fill = erasure)) +
   geom_boxplot(aes(group = str_c(erasure, eff_size_kb)),
-               alpha = 0.3, coef = Inf, width = 0.1) +
+               alpha = 0.3, width = 0.1) +
   scale_x_log10(breaks = c(10, 1000, 100000),
                 labels = c("10 KB", "1 MB", "100 MB")) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
@@ -108,5 +115,6 @@ datUpload |>
   scale_fill_viridis_d(option = "C", end = 0.85) +
   labs(x = "Effective file size", y = "Upload time",
        color = "Erasure coding: ", fill = "Erasure coding: ") +
+  coord_cartesian(xlim = c(1, 2e6), ylim = c(0.08, 2300)) +
   theme_bw() +
   theme(legend.position = "bottom")

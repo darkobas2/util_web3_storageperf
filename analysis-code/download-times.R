@@ -26,8 +26,8 @@ dat <-
   mutate(dataset = "2025-04", .before = 1)
 
 datNew <-
-  readDownloadData("../data/swarm-2025-05_with_PR5097/swarm.rds") |>
-  mutate(dataset = "2025-05_with_PR", .before = 1)
+  readDownloadData("../data/swarm-2025-06/swarm.rds") |>
+  mutate(dataset = "2025-06", .before = 1)
 
 
 bind_rows(dat, datNew) |>

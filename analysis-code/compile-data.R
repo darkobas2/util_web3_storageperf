@@ -1,6 +1,6 @@
 # Path to folder with the experiment whose results we are putting in a tidy table:
 clargs <- commandArgs(trailingOnly = TRUE)
-if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-04/"
+if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-06/"
 
 
 library(jsonlite)
