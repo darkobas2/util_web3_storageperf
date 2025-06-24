@@ -92,8 +92,8 @@ datUpload |>
   mutate(erasure = as_factor(str_c("Erasure: ", erasure))) |>
   ggplot(aes(x = size_kb)) +
   geom_boxplot(aes(y = time_sec, group = size_kb),
-               fill = "steelblue", color = "steelblue", alpha = 0.3, coef = Inf) +
-  geom_line(aes(y = time_predict), color = "black", alpha = 0.8) +
+               fill = "steelblue", color = "steelblue", alpha = 0.3) +
+  geom_line(aes(y = time_predict), color = "black", alpha = 0.5) +
   scale_x_log10(breaks = c(1, 100, 10000, 1000000),
                 labels = c("1 KB", "100 KB", "10 MB", "1 GB")) +
   scale_y_log10(breaks = 10^(-1:2), labels = c(0.1, 1, 10, 100)) +

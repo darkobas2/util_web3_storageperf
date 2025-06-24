@@ -81,9 +81,9 @@ Additionally, here are some further notes and points about the experimental desi
 ```{r}
 # Load data from different file sources (for the different platforms):
 dat0 <-
-  read_rds("../data/arweave-2024-11/arweave.rds") |>
-  bind_rows(read_rds("../data/ipfs-2024-11/ipfs.rds")) |>
-  bind_rows(read_rds("../data/swarm-2025-01/swarm.rds"))
+  read_rds("../arweave-2024-11/arweave.rds") |>
+  bind_rows(read_rds("../ipfs-2024-11/ipfs.rds")) |>
+  bind_rows(read_rds("swarm.rds"))
 ```
 
 After we load and compile the data, we get a table with 7293 rows and 8 columns where each row corresponds to a single download. A quick note: we just calculated that the experimental design leads to somewhat fewer than 6930 downloads, yet here we have 7293 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line. This was also important to do because some of the downloads failed: 276 out of the 7293 downloads could not finish even in 15 attempts. @tbl-fails shows how these failures are distributed across the various parameterizations.
@@ -253,7 +253,7 @@ uploadFileSizeFromJsonRaw <- function(jsonFile) {
 
 
 udat <-
-  tibble(file = Sys.glob("../data/swarm-2025-01/references/*.json")) |>
+  tibble(file = Sys.glob("references/*.json")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
