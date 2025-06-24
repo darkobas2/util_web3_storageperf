@@ -79,9 +79,9 @@ The above design leads to (7 filesizes) x (11 platforms) x (3 servers) x (30 rep
 ```{r}
 # Load data from different file sources (for the different platforms):
 dat0 <-
-  read_rds("../data/arweave-2024-11/arweave.rds") |>
-  bind_rows(read_rds("../data/ipfs-2024-11/ipfs.rds")) |>
-  bind_rows(read_rds("../data/swarm-2025-01/swarm.rds"))
+  read_rds("../arweave-2024-11/arweave.rds") |>
+  bind_rows(read_rds("../ipfs-2024-11/ipfs.rds")) |>
+  bind_rows(read_rds("swarm.rds"))
 ```
 
 After we load and compile the data, we get a table with 7293 rows and 8 columns. Each row corresponds to a single download. The first ten rows are shown in @tbl-firstten. A quick note: we just calculated that the experimental design leads to 7293 downloads, yet here we have 6966 rows of data. This is because for Arweave and IPFS we had 60 replicates per factor combination instead of 30 (with one exception: we only had 51 replicates for files of size 100 MB). Instead of discarding the extras, we kept them to lend further statistical power down the line.
@@ -644,7 +644,7 @@ uploadFileSizeFromJsonRaw <- function(jsonFile) {
 
 
 datUpload <-
-  tibble(file = Sys.glob("../data/swarm-2025-01/references/*")) |>
+  tibble(file = Sys.glob("references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   mutate(data = map(file, uploadDataFromJsonRaw)) |>
   unnest(data) |>
