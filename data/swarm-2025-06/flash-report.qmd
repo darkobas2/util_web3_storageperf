@@ -1,10 +1,11 @@
 ---
-title: "The latest Benchmarking Experiment -- Quick Summary"
+title: "The latest benchmarking experiment -- quick summary"
 author: "Gyuri Barabás"
 format:
   pdf:
     keep-tex: false
     fontsize: 11pt
+    documentclass: article
     papersize: a4paper
     margin-left: 1in
     margin-right: 1in
@@ -37,9 +38,7 @@ latex-tinytex: false
 
 
 ```{r}
-library(jsonlite) # Converting JSON files to data frames
 library(tidyverse) # Efficient data manipulation and plotting
-library(lme4) # Fitting generalized linear mixed models
 ```
 
 The latest benchmarking was run under the same settings as the one that was run before in April. The one difference is that uploading files of 100MB or larger was not possible.^[Information from Marko Zidaric.] So instead of 100MB files, we had 50MB ones in this run of the experiment.
@@ -113,95 +112,13 @@ downloadTimeComparePlot(dat, strat = "DATA")
 downloadTimeComparePlot(dat, strat = "RACE")
 ```
 
-The results from the two runs look quite similar. A closer look, by fitting models to the data and comparing model predictions, reveals faster download times under the `RACE` retrieval strategy for the June experiment. In turn, for the `DATA` strategy, the June experiment performs (slightly) better for large files and slightly worse for small files than the previous run in April. @fig-compare-models shows these model comparisons. The model is the same that was used earlier for Swarm:
-$$
-\begin{aligned}
-(\text{time})_i
-= \exp&\big[ \beta_0
-+ \beta_1 \log^2(\text{size})_i
-+ \beta_2 (\text{erasure})_i
-+ \beta_3 (\text{strategy})_i
-\\ & + \beta_4 \log^2(\text{size})_i (\text{erasure})_i
-+ \beta_5 \log^2(\text{size})_i (\text{strategy})_i
-+ \beta_6 (\text{erasure})_i (\text{strategy})_i
-\\ & + \mu_{0,\text{v}(i)}
-+ \mu_{1,\text{v}(i)}\log^2(\text{size})_i
-+ \mu_{2,\text{v}(i)}(\text{erasure})_i \big] ,
-\end{aligned}
-$$ {#eq-model-Swarm}
-where $(\text{time})_i$ and $(\text{size})_i$ are respectively the $i$th download time (in seconds) and file size (in kilobytes) in the data, $\beta_0, \ldots, \beta_6$ are regression coefficients, and $\mu_{k,\text{v}(i)}$ are random effects where $\text{v}(i)$ returns 1, 2, or 3, depending on which server the $i$th data point was downloaded from.
-
-```{r}
-modelSwarm <- function(dat) {
-  dat |>
-    mutate(
-      strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))
-    ) |>
-    mutate(erasure = case_match(
-      erasure,
-      "NONE"     ~ 0,
-      "MEDIUM"   ~ 1,
-      "STRONG"   ~ 2,
-      "INSANE"   ~ 3,
-      "PARANOID" ~ 4
-    )) |>
-    glmer(time_sec ~ I(log(size_kb)^2) + erasure + strategy +
-            I(log(size_kb)^2):erasure + I(log(size_kb)^2):strategy +
-            erasure:strategy + (1 + I(log(size_kb)^2) + erasure | server),
-          data = _, family = gaussian(link = "log"))
-}
-```
-
-```{r}
-modelOld <- modelSwarm(dat |> filter(dataset == "2025-04"))
-modelNew <- modelSwarm(dat |> filter(dataset == "2025-06"))
-```
+The results from the two runs look quite similar, though we appear to see consistently faster download times under the `RACE` retrieval strategy for the June experiment. However, it is unlikely that this observed difference is significant. Indeed, if we make a group-by-group comparison of the two experiments (taking @fig-compare-data and @fig-compare-race, and for each file size category / retrieval strategy / erasure coding combination, compare the April and June data using a non-parametric Wilcoxon rank sum test), none of the results come out as significant at the $\alpha = 0.05$ level, after correcting for multiple comparisons (@fig-wilcox).
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 9
-#| fig-cap: Comparison of model fits to the April (blue, 2025-04) and June (yellow, 2025-06) benchmarking experiments.
-#| label: fig-compare-models
-
-
-dat |>
-  mutate(strategy = as_factor(ifelse(strategy != "RACE", "NONE/DATA", "RACE"))) |>
-  mutate(erasure_text = erasure, .after = erasure) |>
-  mutate(erasure = case_match(
-    erasure,
-    "NONE"     ~ 0,
-    "MEDIUM"   ~ 0.01,
-    "STRONG"   ~ 0.05,
-    "INSANE"   ~ 0.1,
-    "PARANOID" ~ 0.5
-  )) |>
-  distinct(dataset, erasure, erasure_text, strategy) |>
-  crossing(size_kb = 10^seq(log10(1), log10(5e6), l = 201)) |>
-  (\(x) mutate(x, pred = case_when(
-    dataset == "2025-04" ~ predict(modelOld, x, re.form = NA, type = "response"),
-    dataset == "2025-06" ~ predict(modelNew, x, re.form = NA, type = "response")
-  )))() |>
-  mutate(erasure = as_factor(erasure_text), .keep = "unused") |>
-  ggplot(aes(x = size_kb, y = pred, color = dataset)) +
-  geom_line() +
-  scale_x_log10(breaks = c(1e1, 1e3, 1e5),
-                labels = c("10 KB", "1 MB", "100 MB")) +
-  scale_y_log10(breaks = c(1, 60, 3600),
-                labels = c("1s", "1m", "1h")) +
-  scale_color_manual(values = c("steelblue", "goldenrod")) +
-  labs(x = "File size", y = "Predicted download time", color = "Dataset") +
-  facet_grid(erasure ~ strategy) +
-  theme_bw()
-```
-
-However, it is unlikely that the observed difference is significant, in the sense that it might be simply due to chance. Indeed, if we make a group-by-group comparison of the two experiments (taking @fig-compare-data and @fig-compare-race, and for each file size category / retrieval strategy / erasure coding combination, compare the April and June data using a non-parametric Wilcoxon rank sum test), none of the results come out as significant at the $\alpha = 0.05$ level, after correcting for multiple comparisons (@fig-wilcox).
-
-```{r}
-#| out-width: 100%
-#| fig-width: 8
-#| fig-height: 9
-#| fig-cap: Group-by-group comparison of results from the April (2025-04) and June (2025-06) benchmarking experiments. The y-axis shows the estimated difference (point) plus/minus 95% confidence intervals (error bars) from a Wilcoxon rank sum test applied to each distinct file size / retrieval strategy / erasure coding combination. Colors indicate whether the difference was found significant at the $\alpha = 0.05$ level, after false discovery rate correction to multiple testing.
+#| fig-cap: Group-by-group comparison of results from the April (2025-04) and June (2025-06) benchmarking experiments. The y-axis shows the estimated difference (point) plus/minus 95% confidence intervals (error bars) from a Wilcoxon rank sum test applied to each distinct file size / retrieval strategy / erasure coding combination. Colors indicate whether the difference was found significant at the $\alpha = 0.05$ level, after false discovery rate correction to multiple testing. Since no results turned out as significant, everything is gray and no results are in blue.
 #| label: fig-wilcox
 
 
@@ -232,11 +149,81 @@ dat |>
   theme_bw()
 ```
 
-We observe a similar trend in upload speeds: they are nearly the same across the April and June runs, but June is slightly faster (@fig-uploads).
+We can also check how much advantage the `RACE` strategy offers over `DATA`, for each file size category. The results are qualitatively similar for the April (@fig-erasure-box-04) as for the June (@fig-erasure-box-06) runs. The one difference is in the largest file size categories, which are difficult to compare because in April that size was 100 MB and in June 50 MB. That said, unless there is a sudden jump in behavior somewhere between those two file sizes, the June results look much better than the April ones did.
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and retrieval strategy (colors). Data are only for the April (2025-04) experiment. The y-axis is individually scaled for each panel. High outliers (points more than 1.5 times the interquartile range outside the box in the upper direction) have been removed, because they otherwise distort the plots and make the corresponding results difficult to compare visually.
+#| label: fig-erasure-box-04
+
+
+dat |>
+  filter(dataset == "2025-04") |>
+  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
+                           1000~"1 MB", 10000~"10 MB", 100000~"100 MB")) |>
+  mutate(size = as_factor(size)) |>
+  select(size, size_kb, strategy, server, erasure, time_sec) |>
+  arrange(size, strategy, erasure, server) |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
+  mutate(size = as_factor(str_c("Size: ", size))) |>
+  # Remove extreme outliers, because they otherwise distort the plot:
+  filter(time_sec < 1.5 * IQR(time_sec) + quantile(time_sec, 0.75),
+         .by = c(size, strategy, erasure)) |>
+  ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
+  geom_boxplot(alpha = 0.3, coef = Inf) +
+  labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
+       y = "Download time (seconds)") +
+  facet_wrap(~ size, scales = "free_y") +
+  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: As @fig-erasure-box-04, but for the June (2025-06) experiment.
+#| label: fig-erasure-box-06
+
+
+dat |>
+  filter(dataset == "2025-06") |>
+  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
+                           1000~"1 MB", 10000~"10 MB", 50000~"50 MB")) |>
+  mutate(size = as_factor(size)) |>
+  select(size, size_kb, strategy, server, erasure, time_sec) |>
+  arrange(size, strategy, erasure, server) |>
+  mutate(strategy = str_remove(strategy, "NONE/")) |>
+  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
+  mutate(size = as_factor(str_c("Size: ", size))) |>
+  # Remove extreme outliers, because they otherwise distort the plot:
+  filter(time_sec < 1.5 * IQR(time_sec) + quantile(time_sec, 0.75),
+         .by = c(size, strategy, erasure)) |>
+  ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
+  geom_boxplot(alpha = 0.3, coef = Inf) +
+  labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
+       y = "Download time (seconds)") +
+  facet_wrap(~ size, scales = "free_y") +
+  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
+```
+
+When looking at upload speeds, they are nearly the same across the April and June runs, but June is slightly faster (@fig-uploads).
 
 ```{r}
 uploadDataFromJsonRaw <- function(jsonFile) {
-  fromJSON(jsonFile) |>
+  jsonlite::fromJSON(jsonFile) |>
     (`[`)(1) |>
     as_tibble() |>
     unnest(swarm) |>
@@ -245,7 +232,7 @@ uploadDataFromJsonRaw <- function(jsonFile) {
 
 
 uploadFileSizeFromJsonRaw <- function(jsonFile) {
-  fromJSON(jsonFile) |>
+  jsonlite::fromJSON(jsonFile) |>
     (`[`)(1) |>
     (`[[`)(1) |>
     names() |>
