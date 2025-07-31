@@ -231,4 +231,5 @@ mkdir references
   mv references_onlyswarm.json references/references_onlyswarm_4_3_$(date +%F_%H-%M).json
 
   echo "all runs completed $(date)"
+  /usr/local/sbin/devops_mattermost.sh "performance test complete"
 } 2>&1 | tee -a "$LOGFILE"
