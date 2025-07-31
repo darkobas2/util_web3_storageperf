@@ -5,6 +5,7 @@ mkdir references
 
 {
   echo "Starting script execution at $(date)"
+  /usr/local/sbin/devops_mattermost.sh "Starting performance script execution at $(date)"
   python3 app.py --upload --repeat 30 --size 50000 --ul-redundancy 0 --only-swarm
   sleep 15m
   python3 app.py --download --repeat 1 --dl-redundancy 0 --only-swarm
@@ -231,5 +232,6 @@ mkdir references
   mv references_onlyswarm.json references/references_onlyswarm_4_3_$(date +%F_%H-%M).json
 
   echo "all runs completed $(date)"
+  /usr/local/sbin/devops_mattermost.sh "all runs completed $(date)"
   /usr/local/sbin/devops_mattermost.sh "performance test complete"
 } 2>&1 | tee -a "$LOGFILE"
