@@ -1,6 +1,6 @@
 # Path to folder with the experiment whose results we are putting in a tidy table:
 clargs <- commandArgs(trailingOnly = TRUE)
-if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-06/"
+if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-07/"
 
 
 library(jsonlite)
@@ -125,19 +125,9 @@ dat |> count(platform)
 dat |> count(server)
 dat |> count(erasure)
 dat |> count(strategy)
-dat |> count(platform, server, size_kb, erasure, strategy) |> print(n = Inf)
 dat |> filter(erasure != "NONE" & strategy == "NONE")
 
-
-dat |>
-  filter(sha256_match) |>
-  select(platform, server, size_kb, erasure, strategy, time_sec) |>
-  mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "STRONG",
-                               "INSANE", "PARANOID")) |>
-  mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
-  arrange(platform, server, size_kb, erasure, strategy, time_sec) |>
-  count(platform, server, size_kb, erasure, strategy) |>
-  print(n = Inf)
+dat |> count(platform, server, size_kb, erasure, strategy) |> print(n = Inf)
 
 
 dat |>
