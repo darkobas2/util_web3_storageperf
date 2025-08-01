@@ -91,7 +91,7 @@ dat |>
   unnest(wilcox) |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
-  mutate(signif = ifelse(p.value < 0.05, "", "not ") |> str_c("significant")) |>
+  mutate(signif = ifelse(adj.p.value < 0.05, "", "not ") |> str_c("significant")) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
   mutate(size_kb = as_factor(size_kb)) |>
   ggplot(aes(x = size_kb, y = estimate, ymin = conf.low, ymax = conf.high,
