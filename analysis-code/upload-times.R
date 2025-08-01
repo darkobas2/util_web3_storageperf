@@ -1,6 +1,6 @@
 library(jsonlite)
 library(tidyverse)
-library(broom)
+library(ggbeeswarm)
 
 
 
@@ -38,28 +38,32 @@ correctedSize <- function(erasure, encryption) {
 }
 
 
+tidyUploadData <- function(referencePath) {
+  tibble(file = Sys.glob(referencePath)) |>
+    mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+    drop_na() |> # Drop any faulty references
+    mutate(data = map(file, uploadDataFromJsonRaw)) |>
+    unnest(data) |>
+    select(erasure, size_kb, time_sec) |>
+    arrange(erasure, size_kb, time_sec) |>
+    mutate(erasure = as_factor(case_match(
+      erasure,
+      0 ~ "NONE",
+      1 ~ "MEDIUM",
+      2 ~ "STRONG",
+      3 ~ "INSANE",
+      4 ~ "PARANOID"
+    )))
+}
+
+
 
 # Any faulty references?
-tibble(file = Sys.glob("../data/swarm-2025-06/references/*")) |>
+tibble(file = Sys.glob("../data/swarm-2025-07/references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   filter(is.na(size_kb))
 
-datUpload <-
-  tibble(file = Sys.glob("../data/swarm-2025-06/references/*")) |>
-  mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
-  drop_na() |> # Drop any faulty references
-  mutate(data = map(file, uploadDataFromJsonRaw)) |>
-  unnest(data) |>
-  select(erasure, size_kb, time_sec) |>
-  arrange(erasure, size_kb, time_sec) |>
-  mutate(erasure = as_factor(case_match(
-    erasure,
-    0 ~ "NONE",
-    1 ~ "MEDIUM",
-    2 ~ "STRONG",
-    3 ~ "INSANE",
-    4 ~ "PARANOID"
-  )))
+datUpload <- tidyUploadData("../data/swarm-2025-06/references/*")
 
 
 datUpload |>
@@ -83,7 +87,7 @@ uploadModel1 <-
   datUpload |>
   glm(time_sec ~ I(log(size_kb)^2) + erasure,
       data = _, family = gaussian(link = "log"))
-glance(uploadModel1)
+broom::glance(uploadModel1)
 summary(uploadModel1)
 
 
@@ -108,7 +112,7 @@ uploadModel2 <-
   mutate(eff_size_kb = size_kb * correctedSize(erasure, "unencrypted")) |>
   glm(time_sec ~ I(log(eff_size_kb)^2) + erasure,
       data = _, family = gaussian(link = "log"))
-glance(uploadModel2)
+broom::glance(uploadModel2)
 summary(uploadModel2)
 
 
@@ -129,3 +133,57 @@ datUpload |>
        color = "Erasure coding: ", fill = "Erasure coding: ") +
   theme_bw() +
   theme(legend.position = "bottom")
+
+
+
+# Compare upload times with previous benchmarks
+uploadSets <-
+  tidyUploadData("../data/swarm-2025-06/references/*") |>
+  mutate(dataset = "2025-06", .before = 1) |>
+  bind_rows(tidyUploadData("../data/swarm-2025-07/references/*") |>
+              mutate(dataset = "2025-07", .before = 1))
+
+uploadSets |>
+  ggplot(aes(x = dataset, y = time_sec, color = dataset)) +
+  geom_quasirandom(alpha = 0.3) +
+  facet_grid(erasure ~ size_kb) +
+  scale_y_log10() +
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  guides(color = "none", fill = "none") +
+  theme_bw()
+
+uploadSets |>
+  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
+         .by = c(dataset, size_kb, erasure)) |>
+  ggplot(aes(x = dataset, y = ztime, color = dataset)) +
+  geom_quasirandom(alpha = 0.3) +
+  facet_grid(erasure ~ size_kb) +
+  scale_color_manual(values = c("steelblue", "goldenrod")) +
+  guides(color = "none", fill = "none") +
+  theme_bw()
+
+# Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
+uploadSets |>
+  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
+         .by = c(dataset, size_kb, erasure)) |>
+  select(!time_sec) |>
+  nest(data = dataset | ztime) |>
+  filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
+  mutate(wilcox = map(data, \(x) wilcox.test(ztime ~ dataset, data = x,
+                                             conf.int = TRUE, conf.level = 0.95))) |>
+  mutate(wilcox = map(wilcox, broom::tidy)) |>
+  unnest(wilcox) |>
+  select(!data & !statistic & !method & !alternative) |>
+  mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
+  mutate(signif = ifelse(adj.p.value < 0.05, "", "not ") |> str_c("significant")) |>
+  mutate(size_kb = as_factor(size_kb)) |>
+  ggplot(aes(x = size_kb, y = estimate, ymin = conf.low, ymax = conf.high,
+             color = signif)) +
+  geom_point() +
+  geom_errorbar(width = 0.2) +
+  scale_color_manual(values = c("significant"="steelblue", "not significant"="gray60")) +
+  scale_x_discrete(breaks = c(1, 10, 100, 1000, 10000, 50000),
+                   labels = c("1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "50 MB")) +
+  facet_grid(erasure ~ .) +
+  labs(x = "File size", y = "Estimated difference") +
+  theme_bw()

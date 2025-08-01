@@ -1,14 +1,5 @@
 {
     "swarm": {
-        "100000": [
-            {
-                "hash": "a905bd24230fe218a612bf649ae696602d6f561bc542fa3c127698a9afc47e72",
-                "sha256": "75b402513d38fddfde2d5e13eca7a706a8add64acd007e759d176f372a33aad0",
-                "upload_time": 72.77617573738098,
-                "timestamp": "2025-06-24T05:50:42.533918+00:00",
-                "ul_redundancy": 0
-            }
-        ],
         "50000": [
             {
                 "hash": "5f5106a3016ca7ab3bc05c11e58513c005ee7fc02095ab3fbb5bc788d047732d",
