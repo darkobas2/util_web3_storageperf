@@ -18,13 +18,18 @@ readDownloadData <- function(file) {
 }
 
 
+humanReadableSize <- function(size_kb) {
+  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0)
+}
+
+
 # Side-by-side visualization of the different sets of results:
 compareTimePlot <- function(data, strategy) {
   data |>
     filter(strategy %in% c("NONE", {{strategy}})) |>
     ggplot(aes(x = size_kb, y = time_sec, color = dataset, fill = dataset,
                group = str_c(server, erasure, size_kb, dataset))) +
-    geom_boxplot(alpha = 0.3, coef = Inf) +
+    geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
     scale_x_log10(breaks = c(10, 1000, 100000),
                   labels = c("10 KB", "1 MB", "100 MB")) +
     scale_y_log10(breaks = c(0.5, 30, 1800),
@@ -43,7 +48,7 @@ compareTimePlot <- function(data, strategy) {
 compareZplot <- function(data, strategy) {
   data |>
     mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-           .by = c(dataset, size_kb, server, erasure, strategy)) |>
+           .by = c(size_kb, server, erasure, strategy)) |>
     select(!platform & !time_sec) |>
     filter(strategy %in% c("NONE", {{strategy}})) |>
     mutate(size_kb = as_factor(size_kb)) |>
@@ -80,9 +85,10 @@ compareZplot(dat, "RACE") # For the RACE strategy
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
 dat |>
+  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
   mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(dataset, size_kb, server, erasure, strategy)) |>
-  select(!platform & !time_sec) |>
+         .by = c(size, server, erasure, strategy)) |>
+  select(!platform & !time_sec & !size_kb) |>
   nest(data = dataset | server | ztime) |>
   filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
   mutate(wilcox = map(data, \(x) wilcox.test(ztime ~ dataset, data = x,
@@ -91,16 +97,19 @@ dat |>
   unnest(wilcox) |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
-  mutate(signif = ifelse(adj.p.value < 0.05, "", "not ") |> str_c("significant")) |>
+  mutate(signif = case_when(
+    adj.p.value <  0.05 & estimate > 0 ~ "New release significantly faster",
+    adj.p.value <  0.05 & estimate < 0 ~ "New release significantly slower",
+    TRUE                               ~ "Difference not significant"
+  )) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
-  mutate(size_kb = as_factor(size_kb)) |>
-  ggplot(aes(x = size_kb, y = estimate, ymin = conf.low, ymax = conf.high,
+  ggplot(aes(x = size, y = estimate, ymin = conf.low, ymax = conf.high,
              color = signif)) +
+  geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
   geom_point() +
   geom_errorbar(width = 0.2) +
-  scale_color_manual(values = c("significant"="steelblue", "not significant"="gray60")) +
-  scale_x_discrete(breaks = c(1, 10, 100, 1000, 10000, 50000),
-                   labels = c("1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "50 MB")) +
+  scale_color_manual(name = "Significance:",
+                     values = c("gray70", "steelblue", "firebrick")) +
   facet_grid(erasure ~ strategy) +
   labs(x = "File size", y = "Estimated difference") +
   theme_bw()

@@ -38,6 +38,11 @@ correctedSize <- function(erasure, encryption) {
 }
 
 
+humanReadableSize <- function(size_kb) {
+  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0)
+}
+
+
 tidyUploadData <- function(referencePath) {
   tibble(file = Sys.glob(referencePath)) |>
     mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
@@ -63,23 +68,23 @@ tibble(file = Sys.glob("../data/swarm-2025-07/references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   filter(is.na(size_kb))
 
-datUpload <- tidyUploadData("../data/swarm-2025-06/references/*")
+datUpload <- tidyUploadData("../data/swarm-2025-07/references/*")
 
 
+# Plotting the raw data:
 datUpload |>
-  ggplot(aes(x = size_kb, y = time_sec, color = erasure, fill = erasure,
+  mutate(time_min = time_sec / 60) |>
+  ggplot(aes(x = size_kb, y = time_min, color = erasure,
              group = as_factor(str_c(size_kb, erasure)))) +
-  geom_boxplot(alpha = 0.3) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
   scale_x_log10(limits = c(0.5, 1e6),
                 breaks = c(10, 1000, 100000),
-                labels = c("10 KB", "1 MB", "100 MB")) +
-  scale_y_log10(limits = c(0.08, 2300),
-                breaks = c(0.5, 30, 1800),
-                labels = c("0.5 s", "1 m", "30 m")) +
+                labels = humanReadableSize(c(10, 1000, 100000))) +
+  scale_y_log10(limits = c(0.00125, 2.6)) +
   scale_color_viridis_d(option = "C", end = 0.85) +
-  scale_fill_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time",
+  labs(x = "File size", y = "Upload time (minutes)",
        color = "Erasure coding", fill = "Erasure coding") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
   theme_bw()
 
 
@@ -99,7 +104,7 @@ datUpload |>
                fill = "steelblue", color = "steelblue", alpha = 0.3) +
   geom_line(aes(y = time_predict), color = "black", alpha = 0.5) +
   scale_x_log10(breaks = c(1, 100, 10000, 1000000),
-                labels = c("1 KB", "100 KB", "10 MB", "1 GB")) +
+                labels = humanReadableSize(c(1, 100, 10000, 1000000))) +
   scale_y_log10(breaks = 10^(-1:2), labels = c(0.1, 1, 10, 100)) +
   labs(x = "File size", y = "Upload time (seconds)",
        color = "Erasure coding", fill = "Erasure coding") +
@@ -124,7 +129,7 @@ datUpload |>
                alpha = 0.3, width = 0.1) +
   geom_line(aes(y = pred)) +
   scale_x_log10(breaks = c(10, 1000, 100000),
-                labels = c("10 KB", "1 MB", "100 MB")) +
+                labels = humanReadableSize(c(10, 1000, 100000))) +
   scale_y_log10(breaks = c(0.5, 30, 1800),
                 labels = c("0.5 s", "1 m", "30 m")) +
   scale_color_viridis_d(option = "C", end = 0.85) +
@@ -144,29 +149,60 @@ uploadSets <-
               mutate(dataset = "2025-07", .before = 1))
 
 uploadSets |>
-  ggplot(aes(x = dataset, y = time_sec, color = dataset)) +
-  geom_quasirandom(alpha = 0.3) +
-  facet_grid(erasure ~ size_kb) +
+  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
+  mutate(time_min = time_sec / 60) |>
+  ggplot(aes(x = dataset, y = time_min, color = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  facet_grid(. ~ size) +
   scale_y_log10() +
-  scale_color_manual(values = c("steelblue", "goldenrod")) +
-  guides(color = "none", fill = "none") +
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  labs(x = "File size", y = "Upload time (minutes)",
+       color = "Erasure coding", fill = "Erasure coding") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw()
+
+uploadSets |>
+  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
+  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
+         .by = c(size, erasure)) |>
+  ggplot(aes(x = dataset, y = ztime, color = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  facet_grid(. ~ size) +
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  labs(x = "File size", y = "Upload time (z-score)",
+       color = "Erasure coding", fill = "Erasure coding") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw()
+
+uploadSets |>
+  mutate(size = fct_reorder(str_c("Size: ", str_trim(humanReadableSize(size_kb))),
+                            size_kb)) |>
+  ggplot(aes(x = dataset, y = time_sec, color = dataset)) +
+  geom_quasirandom(color = "steelblue", alpha = 0.3) +
+  facet_grid(erasure ~ size) +
+  scale_y_log10() +
+  labs(x = "Dataset", y = "Upload time (seconds)") +
   theme_bw()
 
 uploadSets |>
   mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(dataset, size_kb, erasure)) |>
+         .by = c(size_kb, erasure)) |>
+  mutate(size = fct_reorder(str_c("Size: ", str_trim(humanReadableSize(size_kb))),
+                            size_kb)) |>
   ggplot(aes(x = dataset, y = ztime, color = dataset)) +
-  geom_quasirandom(alpha = 0.3) +
-  facet_grid(erasure ~ size_kb) +
-  scale_color_manual(values = c("steelblue", "goldenrod")) +
-  guides(color = "none", fill = "none") +
+  geom_quasirandom(color = "steelblue", alpha = 0.3) +
+  facet_grid(erasure ~ size) +
+  labs(x = "Dataset", y = "Upload time (z-score)") +
   theme_bw()
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
 uploadSets |>
   mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(dataset, size_kb, erasure)) |>
+         .by = c(size_kb, erasure)) |>
   select(!time_sec) |>
+  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
   nest(data = dataset | ztime) |>
   filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
   mutate(wilcox = map(data, \(x) wilcox.test(ztime ~ dataset, data = x,
@@ -175,15 +211,18 @@ uploadSets |>
   unnest(wilcox) |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
-  mutate(signif = ifelse(adj.p.value < 0.05, "", "not ") |> str_c("significant")) |>
-  mutate(size_kb = as_factor(size_kb)) |>
-  ggplot(aes(x = size_kb, y = estimate, ymin = conf.low, ymax = conf.high,
+  mutate(signif = case_when(
+    adj.p.value <  0.05 & estimate > 0 ~ "New release significantly faster",
+    adj.p.value <  0.05 & estimate < 0 ~ "New release significantly slower",
+    TRUE                               ~ "Difference not significant"
+  )) |>
+  ggplot(aes(x = size, y = estimate, ymin = conf.low, ymax = conf.high,
              color = signif)) +
+  geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
   geom_point() +
   geom_errorbar(width = 0.2) +
-  scale_color_manual(values = c("significant"="steelblue", "not significant"="gray60")) +
-  scale_x_discrete(breaks = c(1, 10, 100, 1000, 10000, 50000),
-                   labels = c("1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "50 MB")) +
+  scale_color_manual(name = "Significance:",
+                     values = c("gray70", "steelblue", "firebrick")) +
   facet_grid(erasure ~ .) +
-  labs(x = "File size", y = "Estimated difference") +
+  labs(x = "File size", y = "Estimated difference", color = "") +
   theme_bw()
