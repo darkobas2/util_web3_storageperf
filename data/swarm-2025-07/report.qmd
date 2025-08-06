@@ -41,7 +41,31 @@ latex-tinytex: false
 library(tidyverse) # Efficient data manipulation and plotting
 ```
 
-The latest benchmarking was run under the same settings as the one that was run before in April. The one difference is that uploading files of 100MB or larger was not possible.^[Information from Marko Zidaric.] So instead of 100MB files, we had 50MB ones in this run of the experiment.
+## Introduction
+
+This report analyzes and compares the results of the latest two benchmarking experiments. The first was run in June 2025, just before Release 2.6 went out. We will call this the `2025-06` experiment. The other one was run in July 2025 just after (the `2025-07` experiment). The comparison of `2025-06` and `2025-07` ought to reveal whether any of the download and upload speeds were affected by the new release, and how.
+
+We begin by a recap of the experimental design. The purpose is to measure up- and download speeds on Swarm for various file sizes, erasure settings, and retrieval strategies. We vary all parameters in a fully factorial way, to get at all their possible combinations. The factors are as follows:
+
+-   `size`: The size of the uploaded random file. We have 6 distinct factor levels: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, and 50 MB. Every file has a size that matches one of these values exactly. Importantly, every single upload is a unique random file, even if the file sizes are otherwise equal---this removes the confounding effects of caching.
+-   `erasure`: The strength of erasure coding. We have five factor levels: `0` (= `NONE`), `1` (= `MEDIUM`), `2` (= `STRONG`), `3` (= `INSANE`), and `4` (= `PARANOID`).
+-   `strategy`: The retrieval strategy used to download the file. Its value is necessarily `NONE` in the absence of erasure coding---i.e., when `erasure = 0`. Otherwise, it is either `DATA` or `RACE`.
+-   `server`: The identity of the server initiating the downloads might influence download speeds. For a fair comparison, servers should be identical within an experiment, but it makes sense to perform the whole experimental suite over multiple different servers, to control for server-specific effects. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used. Here we use three distinct servers: `Server 1`, `Server 2`, and `Server 3`.
+-   `replicate`: To gain sufficient sample sizes for proper statistical analysis, every single combination of the above factors is replicated 30 times. For example, given the unique combination of 1MB files uploaded without erasure coding on Server 1, we actually up- and downloaded at least 30 such files (each being a unique random file).
+
+The above design leads to (6 filesizes) $\times$ (5 erasure code levels) $times$ (3 retrieval strategies) $\times$ (3 servers) $times$ (30 replicates) = 8100 unique download experiments. Actually, it's fewer than that, because the `NONE` retrieval strategy is only ever used when `erasure` is `0`, and the `DATA` and `RACE` strategies only when `erasure` is not `0`. So the actual number is 4860.
+
+One slight (and useful) deviation from the above protocol was that the `2025-07` experiment used 60 replicates per parameter combination, instead of 30. So the number of individual downloads was 9720 for the most recent run.
+
+Additionally, here are some further notes and points about the experimental design outlined above:
+
+-   All uploads are direct, as opposed to deferred.
+-   We need to make sure that no download starts after the system has properly stored the data. Since our files are relatively small, uploading should be done in a few minutes at most (as we will see later, the longest upload in our data took below 3 minutes). So we opted for a crude but reliable way of eliminating any syncing issues: we waited exactly 2 hours after every upload, and began downloading only then.
+-   All downloads are done using nodes with an active checkbook.
+-   Every download is re-attempted in case of a failure. In total, 15 attempts are made before giving up and declaring that the file cannot be retrieved.
+
+
+## Preliminary analysis
 
 ```{r}
 readDownloadData <- function(file) {
