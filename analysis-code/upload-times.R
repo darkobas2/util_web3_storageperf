@@ -1,6 +1,7 @@
 library(jsonlite)
 library(tidyverse)
 library(ggbeeswarm)
+library(ggfortify)
 
 
 
@@ -157,8 +158,7 @@ uploadSets |>
   facet_grid(. ~ size) +
   scale_y_log10() +
   scale_color_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time (minutes)",
-       color = "Erasure coding", fill = "Erasure coding") +
+  labs(x = "File size", y = "Upload time (minutes)", color = "Erasure coding") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   theme_bw()
 
@@ -169,43 +169,28 @@ uploadSets |>
   ggplot(aes(x = dataset, y = ztime, color = erasure,
              group = as_factor(str_c(size_kb, erasure)))) +
   geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
-  facet_grid(. ~ size) +
+  facet_wrap(~ size, scales = "free_y", nrow = 1) +
   scale_color_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time (z-score)",
-       color = "Erasure coding", fill = "Erasure coding") +
+  labs(x = "File size", y = "Upload time (z-score)", color = "Erasure coding:") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
-  theme_bw()
+  theme_bw() +
+  theme(legend.position = "bottom")
 
-uploadSets |>
-  mutate(size = fct_reorder(str_c("Size: ", str_trim(humanReadableSize(size_kb))),
-                            size_kb)) |>
-  ggplot(aes(x = dataset, y = time_sec, color = dataset)) +
-  geom_quasirandom(color = "steelblue", alpha = 0.3) +
-  facet_grid(erasure ~ size) +
-  scale_y_log10() +
-  labs(x = "Dataset", y = "Upload time (seconds)") +
-  theme_bw()
-
+# ANOVA:
 uploadSets |>
   mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
          .by = c(size_kb, erasure)) |>
-  mutate(size = fct_reorder(str_c("Size: ", str_trim(humanReadableSize(size_kb))),
-                            size_kb)) |>
-  ggplot(aes(x = dataset, y = ztime, color = dataset)) +
-  geom_quasirandom(color = "steelblue", alpha = 0.3) +
-  facet_grid(erasure ~ size) +
-  labs(x = "Dataset", y = "Upload time (z-score)") +
-  theme_bw()
+  mutate(logsize = log(size_kb)) |>
+  lm(ztime ~ dataset * erasure * logsize, data = _) |>
+  autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.2) + theme_bw()
+  anova()
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
 uploadSets |>
-  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(size_kb, erasure)) |>
-  select(!time_sec) |>
   mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
-  nest(data = dataset | ztime) |>
+  nest(data = dataset | time_sec) |>
   filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
-  mutate(wilcox = map(data, \(x) wilcox.test(ztime ~ dataset, data = x,
+  mutate(wilcox = map(data, \(x) wilcox.test(time_sec ~ dataset, data = x,
                                              conf.int = TRUE, conf.level = 0.95))) |>
   mutate(wilcox = map(wilcox, broom::tidy)) |>
   unnest(wilcox) |>
@@ -216,13 +201,17 @@ uploadSets |>
     adj.p.value <  0.05 & estimate < 0 ~ "New release significantly slower",
     TRUE                               ~ "Difference not significant"
   )) |>
-  ggplot(aes(x = size, y = estimate, ymin = conf.low, ymax = conf.high,
+  ggplot(aes(x = as_factor(0), y = estimate, ymin = conf.low, ymax = conf.high,
              color = signif)) +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
   geom_point() +
-  geom_errorbar(width = 0.2) +
+  geom_errorbar(width = 0.1) +
   scale_color_manual(name = "Significance:",
                      values = c("gray70", "steelblue", "firebrick")) +
-  facet_grid(erasure ~ .) +
-  labs(x = "File size", y = "Estimated difference", color = "") +
-  theme_bw()
+  scale_y_continuous(labels = abbreviate) +
+  facet_grid(size ~ erasure, scales = "free_y") +
+  labs(x = NULL, y = "Estimated difference (seconds)", color = "") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid.major.x = element_blank())
