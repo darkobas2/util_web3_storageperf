@@ -169,7 +169,9 @@ uploadSets |>
   ggplot(aes(x = dataset, y = ztime, color = erasure,
              group = as_factor(str_c(size_kb, erasure)))) +
   geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
-  facet_wrap(~ size, scales = "free_y", nrow = 1) +
+  facet_wrap(~ size, scales = "fixed", nrow = 1) +
+  # Remove 9 outliers:
+  scale_y_continuous(limits = c(NA, 5)) +
   scale_color_viridis_d(option = "C", end = 0.85) +
   labs(x = "File size", y = "Upload time (z-score)", color = "Erasure coding:") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
@@ -180,10 +182,11 @@ uploadSets |>
 uploadSets |>
   mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
          .by = c(size_kb, erasure)) |>
+  filter(ztime < 5) |>
   mutate(logsize = log(size_kb)) |>
   lm(ztime ~ dataset * erasure * logsize, data = _) |>
-  autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.2) + theme_bw()
-  anova()
+  #autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.2) + theme_bw()
+  summary()
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
 uploadSets |>

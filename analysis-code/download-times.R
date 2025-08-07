@@ -5,15 +5,11 @@ library(ggbeeswarm)
 
 readDownloadData <- function(file) {
   read_rds(file) |>
-    # Remove failed downloads:
     filter(sha256_match) |>
-    # Remove columns that are no longer needed:
     select(!sha256_match & !attempts) |>
-    # Convert erasure and strategy to factors, for easier handling later:
     mutate(erasure = fct_relevel(erasure, "NONE", "MEDIUM", "STRONG",
                                  "INSANE", "PARANOID")) |>
     mutate(strategy = fct_relevel(strategy, "NONE", "DATA", "RACE")) |>
-    # Keep rows in a logical order:
     arrange(platform, erasure, strategy, size_kb, server)
 }
 
@@ -24,9 +20,9 @@ humanReadableSize <- function(size_kb) {
 
 
 # Side-by-side visualization of the different sets of results:
-compareTimePlot <- function(data, strategy) {
+compareTimePlot <- function(data, strat) {
   data |>
-    filter(strategy %in% c("NONE", {{strategy}})) |>
+    filter(as.character(strategy) %in% c("NONE", strat)) |>
     mutate(size_b = 1000*size_kb) |>
     ggplot(aes(x = size_b, y = time_sec, color = dataset,
                group = str_c(server, erasure, size_b, dataset))) +
@@ -43,13 +39,13 @@ compareTimePlot <- function(data, strategy) {
 
 
 # Compare download time z-scores
-compareZplot <- function(data, strategy) {
+compareZplot <- function(data, strat) {
   data |>
     mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
            .by = c(size_kb, server, erasure, strategy)) |>
     mutate(size = str_trim(humanReadableSize(size_kb))) |>
     select(!platform & !time_sec & !size_kb) |>
-    filter(strategy %in% c("NONE", {{strategy}})) |>
+    filter(as.character(strategy) %in% c("NONE", strat)) |>
     mutate(size = as_factor(size)) |>
     ggplot(aes(x = size, y = ztime, color = dataset, fill = dataset,
                group = str_c(server, erasure, size, dataset))) +
