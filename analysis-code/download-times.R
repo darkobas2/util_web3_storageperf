@@ -38,7 +38,7 @@ compareTimePlot <- function(data, strat) {
 }
 
 
-# Compare download time z-scores
+# Compare download time z-scores visually:
 compareZplot <- function(data, strat) {
   data |>
     mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
