@@ -1,5 +1,5 @@
 ---
-title: "Comparing benchmarking experiment results from before and after Release 2.6"
+title: "Comparing benchmarking experiment results from Release 2.5 and Release 2.6"
 author: "Gyuri Barabás"
 format:
   pdf:
@@ -47,7 +47,7 @@ library(ggbeeswarm) # Plotting data points resembling underlying distribution
 
 ## Introduction
 
-This report analyzes and compares the results of the latest two benchmarking experiments. The first was run in June 2025, just before Release 2.6 went out. We will call this the pre-release experiment. The other one was run in July 2025 just after (the post-release experiment). The comparison of the pre- and post-release experiments ought to reveal whether any of the download and upload speeds were affected by the new release, and how.
+This report analyzes and compares the results of the latest two benchmarking experiments. The first was run in June 2025, just before Release 2.6 went out. We will call this the "Release 2.5" experiment. The other one was run in July 2025 just after (the "Release 2.6" experiment). The comparison of the Release 2.5 and Release 2.6 experiments ought to reveal whether any of the download and upload speeds were affected by the new release, and how.
 
 We begin by a recap of the experimental design. The purpose is to measure up- and download speeds on Swarm for various file sizes, erasure settings, and retrieval strategies. We vary all parameters in a fully factorial way, to get at all their possible combinations. The factors are as follows:
 
@@ -68,9 +68,9 @@ Additionally, here are some further notes about the experimental design outlined
 
 
 
-## Download times
+## Preliminary data check
 
-Both experiments uploaded all files without problems. The same holds for downloads, except for 6 failed attempts in the post-release experiment. These failed download attempts were all for 50 MB files with `STRONG` erasure coding and the `DATA` retrieval strategy, distributed evenly across the three servers (i.e., two fails per each). These six entries were removed from the data before the analysis. This leaves 9714 downloads in our dataset: 4860 per each of the two experiments, minus the 6 failed ones.
+All files uploaded without problems, in both experiments. The same holds for downloads, except for 6 failed attempts in the Release 2.6 experiment. These failed download attempts were all for 50 MB files with `STRONG` erasure coding and the `DATA` retrieval strategy, distributed evenly across the three servers (i.e., two fails per each). These six entries were removed from the data before the analysis. This leaves 9714 downloads in our dataset: 4860 per each of the two experiments, minus the 6 failed ones.
 
 ```{r}
 readDownloadData <- function(file) {
@@ -89,13 +89,35 @@ readDownloadData <- function(file) {
 
 
 humanReadableSize <- function(size_kb) {
-  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0)
+  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0) |>
+    str_trim()
 }
 
 
+ztrans <- function(x) (x - mean(x)) / sd(x)
+
+
+# Load data:
+downloadDat <-
+  bind_rows(
+    readDownloadData("../swarm-2025-06/swarm.rds") |>
+      mutate(dataset = "Release 2.5", .before = 1),
+    readDownloadData("../swarm-2025-07/swarm.rds") |>
+      mutate(dataset = "Release 2.6", .before = 1)
+  ) |>
+  select(!platform) |>
+  mutate(size = fct_reorder(humanReadableSize(size_kb), size_kb)) |>
+  mutate(dataset = fct_relevel(dataset, "Release 2.5", "Release 2.6"))
+```
+
+
+
+## Download times
+
+```{r}
 # Side-by-side visualization of the different sets of results:
-compareTimePlot <- function(data, strat) {
-  data |>
+compareTimePlot <- function(downloadDat, strat) {
+  downloadDat |>
     filter(as.character(strategy) %in% c("NONE", strat)) |>
     mutate(size_b = 1000*size_kb) |>
     ggplot(aes(x = size_b, y = time_sec, color = dataset,
@@ -114,13 +136,11 @@ compareTimePlot <- function(data, strat) {
 
 
 # Compare download time z-scores visually:
-compareZplot <- function(data, strat) {
-  data |>
-    mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-           .by = c(size_kb, server, erasure, strategy)) |>
-    mutate(size = str_trim(humanReadableSize(size_kb))) |>
+compareZplot <- function(downloadDat, strat) {
+  downloadDat |>
+    mutate(ztime = ztrans(time_sec),
+           .by = c(size, server, erasure, strategy)) |>
     filter(as.character(strategy) %in% c("NONE", strat)) |>
-    mutate(size = as_factor(size)) |>
     ggplot(aes(x = size, y = ztime, color = dataset, fill = dataset,
                group = str_c(server, erasure, size, dataset))) +
     geom_quasirandom(alpha = 0.3, dodge.width = 0.8) +
@@ -132,33 +152,23 @@ compareZplot <- function(data, strat) {
     theme_bw() +
     theme(legend.position = "bottom")
 }
-
-
-
-dat <- bind_rows(
-  readDownloadData("../swarm-2025-06/swarm.rds") |>
-    mutate(dataset = "Pre-release", .before = 1),
-  readDownloadData("../swarm-2025-07/swarm.rds") |>
-    mutate(dataset = "Post-release", .before = 1)
-) |>
-  select(!platform) |>
-  mutate(dataset = fct_relevel(dataset, "Pre-release"))
 ```
 
-We can visually compare download times across the pre-release and post-release benchmarking runs. We do this both for the `DATA` (@fig-compare-data) and `RACE` (@fig-compare-race) retrieval strategies. For smaller file sizes (especially in the absence of erasure coding), the new release appears to be faster, but for large files it looks clearly slower. To facilitate the comparison, it helps to bring the download times, which vary over several orders of magnitude depending on file size, to the same scale. One can do this by z-transforming download times: for data points within each combination of file size category, server identity, erasure level, and retrieval strategy, we subtract the mean from the download times, and divide this difference by their standard deviation:
+We can visually compare download times across the 2.5 and 2.6 benchmarking runs. We do this both for the `DATA` (@fig-compare-data) and `RACE` (@fig-compare-race) retrieval strategies. For smaller file sizes (especially in the absence of erasure coding), the new release appears to be faster, but for large files it looks clearly slower. To facilitate the comparison, it helps to bring the download times, which vary over several orders of magnitude depending on file size, to the same scale. One can do this by z-transforming download times: for data points within each combination of file size category, server identity, erasure level, and retrieval strategy (this will leave 60 data points in every factor combination category: 30-30 for the Release 2.5 and Release 2.6 runs), we subtract the mean from the download times, and divide this difference by their standard deviation:
 $$
-z_i = \frac{t_i - \bar{t}}{\text{sd}(t)} ,
+z_i
+= \frac{t_i - \bar{t}}{\text{sd}(t)} .
 $$ {#eq-z}
-where $t_i$ is the $i$th measured download time (in seconds), $\bar{t}$ is their mean, and $\text{sd}(t)$ their standard deviation. The resulting z-scores, $z_i$, are unitless, and have by definition mean zero and variance one. This makes them much easier to compare visually across various experimental factor combinations (@fig-z-data, @fig-z-race).
+Here $t_i$ is the $i$th measured download time (in seconds), $\bar{t}$ is their mean, and $\text{sd}(t)$ their standard deviation. The resulting z-scores, $z_i$, are unitless, and have by definition mean zero and variance one. This makes them much easier to compare visually across various experimental factor combinations (@fig-z-data, @fig-z-race).
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 9
-#| fig-cap: Comparison of the pre-release (blue) and post-release (yellow) benchmarking experiments, for the `DATA` retrieval strategy. Panel rows are erasure levels, panel columns are the three servers, the x-axis is file size, and the y-axis is download time in seconds (both are on the log scale). Each point is one download. Points are arranged to reflect their underlying distribution.
+#| fig-cap: Comparison of the 2.5 (blue) and 2.6 (yellow) benchmarking experiments, for the `DATA` retrieval strategy. Panel rows are erasure levels, panel columns are the three servers, the x-axis is file size, and the y-axis is download time in seconds (both are on the log scale). Each point is one download. Points are arranged to reflect their underlying distribution.
 #| label: fig-compare-data
 
-compareTimePlot(dat, "DATA")
+compareTimePlot(downloadDat, "DATA")
 ```
 
 ```{r}
@@ -168,7 +178,7 @@ compareTimePlot(dat, "DATA")
 #| fig-cap: As @fig-compare-data, but for the `RACE` retrieval strategy.
 #| label: fig-compare-race
 
-compareTimePlot(dat, "RACE")
+compareTimePlot(downloadDat, "RACE")
 ```
 
 ```{r}
@@ -178,7 +188,7 @@ compareTimePlot(dat, "RACE")
 #| fig-cap: As @fig-compare-data, with z-scores along the y-axis.
 #| label: fig-z-data
 
-compareZplot(dat, "DATA")
+compareZplot(downloadDat, "DATA")
 ```
 
 ```{r}
@@ -188,22 +198,21 @@ compareZplot(dat, "DATA")
 #| fig-cap: As @fig-z-data, but for the `RACE` retrieval strategy.
 #| label: fig-z-race
 
-compareZplot(dat, "RACE")
+compareZplot(downloadDat, "RACE")
 ```
 
-The z-scores do not change the interpretation of the original figures much, but do highlight that the speed gains for small file sizes, while probably real, are not particularly interesting. To rigorously compare the pre- and post-release results within each file size, server, erasure level, and retrieval strategy category, we can perform Wilcoxon rank sum tests.^[It does not matter whether the tests are performed on the z-scores or the original download times, because the Wilcoxon rank sum test only cares about the ranks of values (i.e., whether a value is the largest, second largest, etc.) and not the values themselves. The transformation of @eq-z preserves the order of ranks. Below we opt to do the test with the original data, to make the resulting estimates correspond to the actual download times as opposed to the z-transformed times.] Since we are performing a large number of these tests, $p$-values should be corrected for multiple comparisons. Here we do this using the false discovery rate method. The results of these statistical tests are in @fig-wilcox-download. We see that our original intuitions are confirmed. Despite statistical significance, for file sizes below 50 MB the observed differences are unlikely to make a practical difference to user experience. However, the slowing down for 50 MB files is more substantial, given that the new release loses between 10 and 30 seconds in a download process that typically takes between half a minute to a minute.
+The z-scores do not change the interpretation of the original figures much, but do highlight that the speed gains for small file sizes, while probably real, are not particularly interesting or impressive. To rigorously compare the Release 2.5 and Release 2.6 results within each file size, server, erasure level, and retrieval strategy category, we can perform Wilcoxon rank sum tests.^[It does not matter whether the tests are performed on the z-scores or the original download times, because the Wilcoxon rank sum test only cares about the ranks of values (i.e., whether a value is the largest, second largest, etc.) and not the values themselves. The transformation of @eq-z preserves the order of ranks. Below we opt to do the test with the original data, to make the resulting estimates correspond to the actual download times as opposed to the z-transformed times.] Since we are performing a large number of these tests, $p$-values should be corrected for multiple comparisons. Here we do this using the false discovery rate method.
+
+The results of these statistical tests are in @fig-wilcox-download. We see that our original intuitions are confirmed. Despite statistical significance, for file sizes below 50 MB the observed differences are unlikely to make a practical difference to user experience. However, the slowing down for 50 MB files is more substantial: Release 2.6 is between 10 and 30 seconds slower than Release 2.5. Since downloading 50 MB files typically takes between half a minute to a minute,^[This corresponds to the interquartile range of 50 MB file downloads in our data.] this is a more serious loss of speed.
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 7
-#| fig-cap: Group-by-group comparison of results from the pre- and post-release benchmarking experiments. The y-axis shows the estimated difference (point) plus/minus 95% confidence intervals (error bars) from a Wilcoxon rank sum test applied to each distinct file size / retrieval strategy / erasure coding combination. Results favoring the post-release test with $p < 0.05$ (after false discovery rate correction) are in blue, those favoring the pre-release test are in red, and those with $p > 0.05$ are in grey.
+#| fig-cap: Group-by-group comparison of results from the Release 2.5 and Release 2.6 download time data. The y-axis shows the estimated difference (point) plus/minus 95% confidence intervals (error bars) from a Wilcoxon rank sum test applied to each distinct file size / retrieval strategy / erasure coding combination. Results favoring the new 2.6 release with $p < 0.05$ (after false discovery rate correction) are in yellow, those favoring the old 2.5 release are in blue, and those with $p > 0.05$ (non-significant results) are in grey.
 #| label: fig-wilcox-download
 
-dat |>
-  mutate(size = fct_reorder(
-    str_trim(humanReadableSize(size_kb)), size_kb
-  )) |>
+downloadDat |>
   select(!size_kb) |>
   nest(data = dataset | server | time_sec) |>
   mutate(wilcox = map(data, \(x) {
@@ -215,11 +224,11 @@ dat |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
   mutate(adv = case_when(
-    adj.p.value <  0.05 & estimate > 0 ~ "Post-release",
-    adj.p.value <  0.05 & estimate < 0 ~ "Pre-release",
+    adj.p.value <  0.05 & estimate > 0 ~ "Release 2.6",
+    adj.p.value <  0.05 & estimate < 0 ~ "Release 2.5",
     adj.p.value >= 0.05                ~ "No difference"
   )) |>
-  mutate(adv = fct_relevel(adv, "Post-release", "No difference")) |>
+  mutate(adv = fct_relevel(adv, "Release 2.6", "No difference")) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
   ggplot() +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
@@ -228,9 +237,7 @@ dat |>
                     color = adv), width = 0.2) +
   scale_color_manual(
     name = "Speed advantage:",
-    values = c("Post-release"  = "steelblue",
-               "No difference" = "grey70",
-               "Pre-release"   = "firebrick")
+    values = c("goldenrod", "grey70", "steelblue")
   ) +
   facet_grid(size ~ erasure, scales = "free_y") +
   labs(x = NULL, y = "Estimated difference (seconds)") +
@@ -238,75 +245,220 @@ dat |>
   theme(legend.position = "bottom")
 ```
 
-We can also check how much advantage the `RACE` strategy offers over `DATA`, for each file size category. The results are qualitatively similar for the pre-release (@fig-erasure-box-pre) as for the post-release (@fig-erasure-box-post) runs.
+
+
+## The relative influence of retrieval strategy
+
+We can also check how much advantage the `RACE` strategy offers over `DATA`, for each file size category. The results are qualitatively similar for the 2.5 release (@fig-erasure-box-pre) as for the 2.6 release (@fig-erasure-box-post) runs, except for 50 MB files. Here the 2.5 release sometimes gave a speed advantage to the `RACE` strategy. In the 2.6 release, `RACE` appears to be inferior for 50 MB files in general.
 
 ```{r}
-#| out-width: 100%
-#| fig-width: 8
-#| fig-height: 6
-#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and retrieval strategy (colors). Data are only for the pre-release experiment. The y-axis is individually scaled for each panel. High outliers (points more than 1.5 times the interquartile range outside the box in the upper direction) have been removed, because they otherwise distort the plots and make the corresponding results difficult to compare visually.
-#| label: fig-erasure-box-pre
-
-
-dat |>
-  filter(dataset == "Pre-release") |>
-  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
-  mutate(size = humanReadableSize(size_kb)) |>
-  mutate(size = as_factor(size)) |>
-  select(size, size_kb, strategy, server, erasure, time_sec) |>
-  arrange(size, strategy, erasure, server) |>
-  mutate(strategy = str_remove(strategy, "NONE/")) |>
-  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
-  mutate(size = as_factor(str_c("Size: ", size))) |>
-  # Remove extreme outliers, because they otherwise distort the plot:
-  filter(time_sec < 1.5 * IQR(time_sec) + quantile(time_sec, 0.75),
-         .by = c(size, strategy, erasure)) |>
-  ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
-  geom_boxplot(alpha = 0.3, coef = Inf) +
-  labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
-       y = "Download time (seconds)") +
-  facet_wrap(~ size, scales = "free_y") +
-  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
-  scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
+compareDataRacePlot <- function(downloadDat, removeOutliers = FALSE) {
+  downloadDat |>
+    mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
+    mutate(size = as_factor(humanReadableSize(size_kb))) |>
+    select(size, size_kb, strategy, server, erasure, time_sec) |>
+    arrange(size, strategy, erasure, server) |>
+    mutate(strategy = str_remove(strategy, "NONE/")) |>
+    mutate(strategy = ifelse(erasure == "NONE", "NONE", strategy)) |>
+    mutate(strategy = as_factor(strategy)) |>
+    mutate(size = as_factor(str_c("Size: ", size))) |>
+    # Potentially remove outliers (in case they distort the plot):
+    (\(.) if (removeOutliers) {
+      filter(. ,time_sec < 1.5*IQR(time_sec) + quantile(time_sec, 0.75),
+             .by = c(size, strategy, erasure))
+    } else .
+    )() |>
+    ggplot(aes(x = erasure, y = time_sec, color = strategy)) +
+    geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+    labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
+         y = "Download time (seconds)") +
+    facet_wrap(~ size, scales = "free_y") +
+    scale_color_manual(values = c("gray40", "forestgreen", "plum3")) +
+    guides(color = guide_legend(override.aes = list(alpha = 1))) +
+    theme_bw() +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6)
+    )
+}
 ```
 
 ```{r}
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 6
-#| fig-cap: As @fig-erasure-box-pre, but for the post-release experiment.
+#| fig-cap: Download times (y-axis) as a function of erasure level (x-axis), file size (panels), and retrieval strategy (colors). Data are only for the Release 2.5 experiment. The y-axis is individually scaled for each panel. High outliers (points more than 1.5 times the interquartile range outside the top quartile in the upper direction) have been removed, because they otherwise distort the plots and make the corresponding results difficult to compare visually.
+#| label: fig-erasure-box-pre
+
+downloadDat |>
+  filter(dataset == "Release 2.5") |>
+  compareDataRacePlot(removeOutliers = TRUE)
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: As @fig-erasure-box-pre, but for the Release 2.6 experiment.
 #| label: fig-erasure-box-post
 
-
-dat |>
-  filter(dataset == "Post-release") |>
-  mutate(strategy = ifelse(strategy != "RACE", "NONE/DATA", "RACE")) |>
-  mutate(size = case_match(size_kb, 1~"1 KB", 10~"10 KB", 100~"100 KB",
-                           1000~"1 MB", 10000~"10 MB", 50000~"50 MB")) |>
-  mutate(size = as_factor(size)) |>
-  select(size, size_kb, strategy, server, erasure, time_sec) |>
-  arrange(size, strategy, erasure, server) |>
-  mutate(strategy = str_remove(strategy, "NONE/")) |>
-  mutate(strategy = as_factor(ifelse(erasure == "NONE", "NONE", strategy))) |>
-  mutate(size = as_factor(str_c("Size: ", size))) |>
-  # Remove extreme outliers, because they otherwise distort the plot:
-  filter(time_sec < 1.5 * IQR(time_sec) + quantile(time_sec, 0.75),
-         .by = c(size, strategy, erasure)) |>
-  ggplot(aes(x = erasure, y = time_sec, color = strategy, fill = strategy)) +
-  geom_boxplot(alpha = 0.3, coef = Inf) +
-  labs(color = "Strategy: ", fill = "Strategy: ", x = "Erasure level",
-       y = "Download time (seconds)") +
-  facet_wrap(~ size, scales = "free_y") +
-  scale_color_manual(values = c("plum3", "steelblue", "goldenrod")) +
-  scale_fill_manual(values = c("plum3", "steelblue", "goldenrod")) +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 40, vjust = 0.75, hjust = 0.6))
+downloadDat |>
+  filter(dataset == "Release 2.6") |>
+  compareDataRacePlot(removeOutliers = TRUE)
 ```
 
 
 
 ## Upload times
+
+```{r}
+uploadDataFromJsonRaw <- function(jsonFile) {
+  fromJSON(jsonFile) |>
+    (`[`)(1) |>
+    as_tibble() |>
+    unnest(swarm) |>
+    rename(erasure = ul_redundancy, time_sec = upload_time)
+}
+
+
+uploadFileSizeFromJsonRaw <- function(jsonFile) {
+  fromJSON(jsonFile) |>
+    (`[`)(1) |>
+    (`[[`)(1) |>
+    names() |>
+    (\(x) if (length(x) > 0) as.integer(x) else NA_integer_)()
+}
+
+
+correctedSize <- function(erasure, encryption) {
+  case_when( # File size overhead from erasure coding and packed-address chunks
+    (erasure == "NONE")     & (encryption == "unencrypted") ~ (128/128) * (128/127),
+    (erasure == "MEDIUM")   & (encryption == "unencrypted") ~ (128/119) * (128/127),
+    (erasure == "STRONG")   & (encryption == "unencrypted") ~ (128/107) * (128/127),
+    (erasure == "INSANE")   & (encryption == "unencrypted") ~ (128/97)  * (128/127),
+    (erasure == "PARANOID") & (encryption == "unencrypted") ~ (128/38)  * (128/127),
+    (erasure == "NONE")     & (encryption == "encrypted")   ~ (64/64)   * (64/63),
+    (erasure == "MEDIUM")   & (encryption == "encrypted")   ~ (64/59)   * (64/63),
+    (erasure == "STRONG")   & (encryption == "encrypted")   ~ (64/53)   * (64/63),
+    (erasure == "INSANE")   & (encryption == "encrypted")   ~ (64/48)   * (64/63),
+    (erasure == "PARANOID") & (encryption == "encrypted")   ~ (64/19)   * (64/63)
+  )
+}
+
+
+tidyUploadData <- function(referencePath) {
+  tibble(file = Sys.glob(referencePath)) |>
+    mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
+    drop_na() |> # Drop any faulty references
+    mutate(data = map(file, uploadDataFromJsonRaw)) |>
+    unnest(data) |>
+    select(erasure, size_kb, time_sec) |>
+    arrange(erasure, size_kb, time_sec) |>
+    mutate(erasure = as_factor(case_match(
+      erasure,
+      0 ~ "NONE",
+      1 ~ "MEDIUM",
+      2 ~ "STRONG",
+      3 ~ "INSANE",
+      4 ~ "PARANOID"
+    )))
+}
+
+
+# Load data:
+uploadDat <-
+  tidyUploadData("../swarm-2025-06/references/*") |>
+  mutate(dataset = "Release 2.5", .before = 1) |>
+  bind_rows(tidyUploadData("../swarm-2025-07/references/*") |>
+              mutate(dataset = "Release 2.6", .before = 1)) |>
+  mutate(dataset = fct_relevel(dataset, "Release 2.5", "Release 2.6")) |>
+  mutate(size = fct_reorder(humanReadableSize(size_kb), size_kb))
+```
+
+A comparison of the raw upload times from Releases 2.5 and 2.6 are shown in @fig-upload-raw. Unlike for download times, it appears clear that Release 2.6 has faster upload times in most file size and erasure coding categories. This impression is further reinforced by looking at the z-scores instead of the raw upload times (@fig-upload-z).
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: Upload times, in minutes (y-axis; log scale) for the release 2.5 and Release 2.6 benchmarking experiments (x-axis). Panels are different file size categories; colors are various erasure cosing levels.
+#| label: fig-upload-raw
+
+uploadDat |>
+  mutate(time_min = time_sec / 60) |>
+  mutate(dataset = str_remove(dataset, "Release ")) |>
+  ggplot(aes(x = dataset, y = time_min, color = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  facet_grid(. ~ size) +
+  scale_y_log10() +
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  labs(x = "Release", y = "Upload time (minutes)",
+       color = "Erasure coding:") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| out-width: 100%
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: As @fig-upload-raw, but with the z-scores of the upload times along the y-axis. The y-axis is truncated at 5, leading to 9 large outliers not being shown (the largest z-score is 10.7). This is to avoid distorting the plot, making the rest easier to compare.
+#| label: fig-upload-z
+
+uploadDat |>
+  mutate(ztime = ztrans(time_sec), .by = c(size, erasure)) |>
+  ggplot(aes(x = dataset, y = ztime, color = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  facet_wrap(~ size, scales = "fixed", nrow = 1) +
+  scale_y_continuous(limits = c(NA, 5)) + # Remove 9 outliers
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  labs(x = "File size", y = "Upload time (z-score)",
+       color = "Erasure coding:") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+Like in the case of download times, we can make a category-by-category comparison of corresponding upload times across the two experiments, using non-parametric Wilcoxon rank sum tests (and correcting $p$-values for multiple comparisons using the false discovery rate method). The results are in @fig-wilcox-upload. Indeed, in most cases the new release has clearly faster uploads, and substantially so for larger (10 MB and 50 MB) files. The differences here are large enough to contribute positively to user experience.
+
+```{r}
+#| out-width: 90%
+#| fig-width: 7
+#| fig-height: 8.5
+#| fig-cap: Group-by-group comparison of results from the Release 2.5 and Release 2.6 upload time data. The y-axis shows the estimated difference (point) plus/minus 95% confidence intervals (error bars) from a Wilcoxon rank sum test applied to each distinct file size / retrieval strategy / erasure coding combination. Results favoring the new 2.6 release with $p < 0.05$ (after false discovery rate correction) are in yellow, and those with $p > 0.05$ (non-significant results) are in grey. (Those favoring the old 2.5 release would be in blue, but there aren't any such results here.)
+#| label: fig-wilcox-upload
+
+uploadDat |>
+  nest(data = dataset | time_sec) |>
+  mutate(wilcox = map(data, \(x) {
+    wilcox.test(time_sec ~ dataset, data = x,
+                conf.int = TRUE, conf.level = 0.95)
+  } )) |>
+  mutate(wilcox = map(wilcox, broom::tidy)) |>
+  unnest(wilcox) |>
+  select(!data & !statistic & !method & !alternative) |>
+  mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
+  mutate(adv = case_when(
+    adj.p.value <  0.05 & estimate > 0 ~ "Release 2.6",
+    adj.p.value <  0.05 & estimate < 0 ~ "Release 2.5",
+    adj.p.value >= 0.05                ~ "No difference"
+  )) |>
+  mutate(adv = fct_relevel(adv, "Release 2.6", "No difference")) |>
+  ggplot(aes(x = erasure, y = estimate, ymin = conf.low,
+             ymax = conf.high, color = adv)) +
+  geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
+  geom_point() +
+  geom_errorbar(width = 0.1) +
+  scale_color_manual(
+    name = "Speed advantage:",
+    values = c("goldenrod", "grey70", "steelblue")
+  ) +
+  facet_grid(size ~ ., scales = "free_y") +
+  labs(x = NULL, y = "Estimated difference (seconds)", color = "") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
