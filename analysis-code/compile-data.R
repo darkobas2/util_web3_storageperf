@@ -3,9 +3,9 @@ clargs <- commandArgs(trailingOnly = TRUE)
 if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-07/"
 
 
-library(jsonlite)
-library(tidyverse)
-library(fs)
+library(jsonlite) # Importing JSON files and making them into tables
+library(tidyverse) # Efficient data manipulation and plotting
+library(fs) # Easy interaction with the file system
 
 
 
@@ -107,28 +107,37 @@ prepareData <- function(jsonFile, configFile) {
 
 
 
+# Load data from original JSON file(s), and convert to a tidy table:
 dat <-
+  # List of JSON file(s) with download benchmark data:
   tibble(file = Sys.glob(str_c(path, "results_onlyswarm*.json"))) |>
+  # Configuration file (also in JSON format):
   mutate(conf = str_c(path, "config.json")) |>
+  # Using these, load the data and put them in a nested table:
   mutate(data = map2(file, conf, prepareData)) |>
+  # Unnest the data:
   unnest(data) |>
-  select(!file & !conf) |>
+  # Only retain necessary columns:
   select(platform, size_kb, server, erasure, strategy,
          time_sec, sha256_match, attempts)
 
 
+# Some simple checks, to gauge data integrity:
+# How many downloads failed?
 dat |> count(sha256_match)
+# What is the distribution of download attempts?
 dat |> count(attempts)
+# What is the distribution of download attempts, conditional on success?
 dat |> filter(sha256_match) |> count(attempts)
-dat |> count(size_kb)
-dat |> count(platform)
-dat |> count(server)
-dat |> count(erasure)
-dat |> count(strategy)
+# Are there any weird data points where strategy is NONE, despite erasure coding?
+# (This table should be empty)
 dat |> filter(erasure != "NONE" & strategy == "NONE")
 
-dat |> count(platform, server, size_kb, erasure, strategy) |> print(n = Inf)
-
-
+# Number of replicates per factor combination. Should be 30 (or close to 30) everywhere:
 dat |>
-  write_rds(str_c(path, "swarm.rds"), compress = "xz")
+  count(platform, server, size_kb, erasure, strategy) |>
+  print(n = Inf)
+
+
+# Save data in compressed rds format:
+write_rds(dat, str_c(path, "swarm.rds"), compress = "xz")
