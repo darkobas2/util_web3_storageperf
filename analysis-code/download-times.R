@@ -15,13 +15,17 @@ readDownloadData <- function(file) {
 
 
 humanReadableSize <- function(size_kb) {
-  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0)
+  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0) |>
+    str_trim()
 }
 
 
+ztrans <- function(x) (x - mean(x)) / sd(x)
+
+
 # Side-by-side visualization of the different sets of results:
-compareTimePlot <- function(data, strat) {
-  data |>
+compareTimePlot <- function(downloadDat, strat) {
+  downloadDat |>
     filter(as.character(strategy) %in% c("NONE", strat)) |>
     mutate(size_b = 1000*size_kb) |>
     ggplot(aes(x = size_b, y = time_sec, color = dataset,
@@ -29,77 +33,87 @@ compareTimePlot <- function(data, strat) {
     geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
     scale_x_log10(labels = scales::label_bytes()) +
     scale_y_log10() +
-    scale_color_manual(values = c("steelblue", "goldenrod")) +
+    scale_color_manual(values = c("#0072B2", "#E69F00")) +
     labs(x = "File size", y = "Download time (seconds)",
          color = "Dataset: ", fill = "Dataset: ") +
     facet_grid(erasure ~ server) +
+    guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_bw() +
     theme(legend.position = "bottom")
 }
 
 
 # Compare download time z-scores visually:
-compareZplot <- function(data, strat) {
-  data |>
-    mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-           .by = c(size_kb, server, erasure, strategy)) |>
-    mutate(size = str_trim(humanReadableSize(size_kb))) |>
-    select(!platform & !time_sec & !size_kb) |>
+compareZplot <- function(downloadDat, strat) {
+  downloadDat |>
+    mutate(ztime = ztrans(time_sec),
+           .by = c(size, server, erasure, strategy)) |>
     filter(as.character(strategy) %in% c("NONE", strat)) |>
-    mutate(size = as_factor(size)) |>
     ggplot(aes(x = size, y = ztime, color = dataset, fill = dataset,
                group = str_c(server, erasure, size, dataset))) +
     geom_quasirandom(alpha = 0.3, dodge.width = 0.8) +
-    scale_color_manual(values = c("steelblue", "goldenrod")) +
+    scale_color_manual(values = c("#0072B2", "#E69F00")) +
     labs(x = "File size", y = "Download time (z-score)",
          color = "Dataset: ", fill = "Dataset: ") +
     facet_grid(erasure ~ server) +
+    guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_bw() +
     theme(legend.position = "bottom")
 }
 
 
 
-dat <-
-  readDownloadData("../data/swarm-2025-06/swarm.rds") |>
-  mutate(dataset = "2025-06", .before = 1) |>
-  bind_rows(readDownloadData("../data/swarm-2025-07/swarm.rds") |>
-              mutate(dataset = "2025-07", .before = 1))
+downloadDat <-
+  bind_rows(
+    readDownloadData("../data/swarm-2025-07/swarm.rds") |>
+      mutate(dataset = "v2.6", .before = 1),
+    readDownloadData("../data/swarm-2025-07_with_PR5097/swarm.rds") |>
+      mutate(dataset = "v2.6+PR", .before = 1)
+  ) |>
+  select(!platform) |>
+  mutate(size = fct_reorder(humanReadableSize(size_kb), size_kb)) |>
+  mutate(dataset = as_factor(dataset))
 
 
 # Side-by-side comparisons:
-compareTimePlot(dat, "DATA") # For the DATA strategy
-compareTimePlot(dat, "RACE") # For the RACE strategy
+compareTimePlot(downloadDat, "DATA") # For the DATA strategy
+compareTimePlot(downloadDat, "RACE") # For the RACE strategy
 
 # Comparison of time z-scores (to fix issues of scale):
-compareZplot(dat, "DATA") # For the DATA strategy
-compareZplot(dat, "RACE") # For the RACE strategy
+compareZplot(downloadDat, "DATA") # For the DATA strategy
+compareZplot(downloadDat, "RACE") # For the RACE strategy
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
-dat |>
-  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
-  select(!platform & !size_kb) |>
+downloadDat |>
+  select(!size_kb) |>
   nest(data = dataset | server | time_sec) |>
-  filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
-  mutate(wilcox = map(data, \(x) wilcox.test(time_sec ~ dataset, data = x,
-                                             conf.int = TRUE, conf.level = 0.95))) |>
+  mutate(wilcox = map(data, \(x) {
+    wilcox.test(time_sec ~ dataset, data = x,
+                conf.int = TRUE, conf.level = 0.95)
+  } )) |>
   mutate(wilcox = map(wilcox, broom::tidy)) |>
   unnest(wilcox) |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
-  mutate(signif = case_when(
-    adj.p.value <  0.05 & estimate > 0 ~ "New release significantly faster",
-    adj.p.value <  0.05 & estimate < 0 ~ "New release significantly slower",
-    TRUE                               ~ "Difference not significant"
+  mutate(adv = case_when(
+    adj.p.value <  0.05 & estimate > 0 ~ "v2.6+PR",
+    adj.p.value <  0.05 & estimate < 0 ~ "v2.6",
+    adj.p.value >= 0.05                ~ "No difference"
   )) |>
+  mutate(adv = fct_relevel(adv, "v2.6", "No difference")) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
-  ggplot(aes(x = strategy, y = estimate, ymin = conf.low, ymax = conf.high,
-             color = signif)) +
+  ggplot() +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
-  geom_point() +
-  geom_errorbar(width = 0.2) +
-  scale_color_manual(name = "Significance:",
-                     values = c("gray70", "steelblue", "firebrick")) +
+  geom_point(aes(x = strategy, y = estimate, color = adv)) +
+  geom_errorbar(aes(x = strategy, ymin = conf.low, ymax = conf.high,
+                    color = adv), width = 0.2) +
+  scale_color_manual(
+    name = "Speed advantage:",
+    values = c("v2.6" = "#0072B2", "No difference" = "grey70",
+               "v2.6+PR" = "#E69F00"),
+    drop = FALSE
+  ) +
   facet_grid(size ~ erasure, scales = "free_y") +
   labs(x = NULL, y = "Estimated difference (seconds)") +
-  theme_bw()
+  theme_bw() +
+  theme(legend.position = "bottom")

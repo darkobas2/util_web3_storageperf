@@ -176,7 +176,7 @@ compareTimePlot(downloadDat, "DATA")
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 9
-#| fig-cap: As @fig-compare-data, but for the `RACE` retrieval strategy.
+#| fig-cap: As @fig-compare-data, but for the `RACE` retrieval strategy. The first panel row (no erasure coding) is the same as the first panel row in @fig-compare-data, since the `DATA`/`RACE` distinction only applies when downloading erasure-coded content.
 #| label: fig-compare-race
 
 compareTimePlot(downloadDat, "RACE")
@@ -186,7 +186,7 @@ compareTimePlot(downloadDat, "RACE")
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 9
-#| fig-cap: As @fig-compare-data, with z-scores along the y-axis.
+#| fig-cap: As @fig-compare-data, but with z-scores along the y-axis.
 #| label: fig-z-data
 
 compareZplot(downloadDat, "DATA")
@@ -196,7 +196,7 @@ compareZplot(downloadDat, "DATA")
 #| out-width: 100%
 #| fig-width: 8
 #| fig-height: 9
-#| fig-cap: As @fig-z-data, but for the `RACE` retrieval strategy.
+#| fig-cap: As @fig-compare-race, but with z-scores along the y-axis.
 #| label: fig-z-race
 
 compareZplot(downloadDat, "RACE")
@@ -229,7 +229,7 @@ downloadDat |>
     adj.p.value <  0.05 & estimate < 0 ~ "Release 2.5",
     adj.p.value >= 0.05                ~ "No difference"
   )) |>
-  mutate(adv = fct_relevel(adv, "Release 2.6", "No difference")) |>
+  mutate(adv = fct_relevel(adv, "Release 2.5", "No difference")) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
   ggplot() +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
@@ -238,7 +238,7 @@ downloadDat |>
                     color = adv), width = 0.2) +
   scale_color_manual(
     name = "Speed advantage:",
-    values = c("#E69F00", "grey70", "#0072B2")
+    values = c("#0072B2", "grey70", "#E69F00")
   ) +
   facet_grid(size ~ erasure, scales = "free_y") +
   labs(x = NULL, y = "Estimated difference (seconds)") +
@@ -478,7 +478,7 @@ uploadDat |>
     adj.p.value <  0.05 & estimate < 0 ~ "Release 2.5",
     adj.p.value >= 0.05                ~ "No difference"
   )) |>
-  mutate(adv = fct_relevel(adv, "Release 2.6", "No difference")) |>
+  mutate(adv = fct_relevel(adv, "Release 2.5", "No difference")) |>
   ggplot(aes(x = erasure, y = estimate, ymin = conf.low,
              ymax = conf.high, color = adv)) +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
@@ -486,7 +486,9 @@ uploadDat |>
   geom_errorbar(width = 0.1) +
   scale_color_manual(
     name = "Speed advantage:",
-    values = c("#E69F00", "grey70", "#0072B2")
+    values = c("Release 2.5" = "#0072B2", "No difference" = "grey70",
+               "Release 2.6" = "#E69F00"),
+    drop = FALSE
   ) +
   facet_grid(size ~ ., scales = "free_y") +
   labs(x = NULL, y = "Estimated difference (seconds)", color = "") +
