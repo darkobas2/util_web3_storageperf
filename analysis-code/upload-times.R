@@ -40,8 +40,12 @@ correctedSize <- function(erasure, encryption) {
 
 
 humanReadableSize <- function(size_kb) {
-  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0)
+  gdata::humanReadable(1000*size_kb, standard = "SI", digits = 0) |>
+    str_trim()
 }
+
+
+ztrans <- function(x) (x - mean(x)) / sd(x)
 
 
 tidyUploadData <- function(referencePath) {
@@ -65,7 +69,7 @@ tidyUploadData <- function(referencePath) {
 
 
 # Any faulty references?
-tibble(file = Sys.glob("../data/swarm-2025-07/references/*")) |>
+tibble(file = Sys.glob("../data/swarm-2025-07_with_PR5097/references/*")) |>
   mutate(size_kb = map_int(file, uploadFileSizeFromJsonRaw)) |>
   filter(is.na(size_kb))
 
@@ -143,78 +147,71 @@ datUpload |>
 
 
 # Compare upload times with previous benchmarks
-uploadSets <-
-  tidyUploadData("../data/swarm-2025-06/references/*") |>
-  mutate(dataset = "2025-06", .before = 1) |>
-  bind_rows(tidyUploadData("../data/swarm-2025-07/references/*") |>
-              mutate(dataset = "2025-07", .before = 1))
+uploadDat <-
+  tidyUploadData("../data/swarm-2025-07/references/*") |>
+  mutate(dataset = "v2.6", .before = 1) |>
+  bind_rows(tidyUploadData("../data/swarm-2025-07_with_PR5097/references/*") |>
+              mutate(dataset = "v2.6+PR", .before = 1)) |>
+  mutate(dataset = as_factor(dataset)) |>
+  mutate(size = fct_reorder(humanReadableSize(size_kb), size_kb))
 
-uploadSets |>
-  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
+
+uploadDat |>
   mutate(time_min = time_sec / 60) |>
+  mutate(dataset = str_remove(dataset, "Release ")) |>
   ggplot(aes(x = dataset, y = time_min, color = erasure,
              group = as_factor(str_c(size_kb, erasure)))) +
   geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
   facet_grid(. ~ size) +
   scale_y_log10() +
   scale_color_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time (minutes)", color = "Erasure coding") +
-  guides(color = guide_legend(override.aes = list(alpha = 1))) +
-  theme_bw()
-
-uploadSets |>
-  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
-  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(size, erasure)) |>
-  ggplot(aes(x = dataset, y = ztime, color = erasure,
-             group = as_factor(str_c(size_kb, erasure)))) +
-  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
-  facet_wrap(~ size, scales = "fixed", nrow = 1) +
-  # Remove 9 outliers:
-  scale_y_continuous(limits = c(NA, 5)) +
-  scale_color_viridis_d(option = "C", end = 0.85) +
-  labs(x = "File size", y = "Upload time (z-score)", color = "Erasure coding:") +
+  labs(x = "Release", y = "Upload time (minutes)",
+       color = "Erasure coding:") +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   theme_bw() +
   theme(legend.position = "bottom")
 
-# ANOVA:
-uploadSets |>
-  mutate(ztime = (time_sec - mean(time_sec)) / sd(time_sec),
-         .by = c(size_kb, erasure)) |>
-  filter(ztime < 5) |>
-  mutate(logsize = log(size_kb)) |>
-  lm(ztime ~ dataset * erasure * logsize, data = _) |>
-  #autoplot(smooth.colour = NA, colour = "steelblue", alpha = 0.2) + theme_bw()
-  summary()
+uploadDat |>
+  mutate(ztime = ztrans(time_sec), .by = c(size, erasure)) |>
+  ggplot(aes(x = dataset, y = ztime, color = erasure,
+             group = as_factor(str_c(size_kb, erasure)))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  facet_wrap(~ size, scales = "fixed", nrow = 1) +
+  scale_y_continuous(limits = c(NA, 5)) + # Remove 9 outliers
+  scale_color_viridis_d(option = "C", end = 0.85) +
+  labs(x = "File size", y = "Upload time (z-score)",
+       color = "Erasure coding:") +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 
 # Compare each pair of observation groups with Wilcoxon rank sum tests; plot results:
-uploadSets |>
-  mutate(size = fct_reorder(str_trim(humanReadableSize(size_kb)), size_kb)) |>
+uploadDat |>
   nest(data = dataset | time_sec) |>
-  filter(map_lgl(data, \(x) nrow(distinct(x, dataset)) == 2L)) |>
-  mutate(wilcox = map(data, \(x) wilcox.test(time_sec ~ dataset, data = x,
-                                             conf.int = TRUE, conf.level = 0.95))) |>
+  mutate(wilcox = map(data, \(x) {
+    wilcox.test(time_sec ~ dataset, data = x,
+                conf.int = TRUE, conf.level = 0.95)
+  } )) |>
   mutate(wilcox = map(wilcox, broom::tidy)) |>
   unnest(wilcox) |>
   select(!data & !statistic & !method & !alternative) |>
   mutate(adj.p.value = p.adjust(p.value, "fdr"), .after = p.value) |>
-  mutate(signif = case_when(
-    adj.p.value <  0.05 & estimate > 0 ~ "New release significantly faster",
-    adj.p.value <  0.05 & estimate < 0 ~ "New release significantly slower",
-    TRUE                               ~ "Difference not significant"
+  mutate(adv = case_when(
+    adj.p.value <  0.05 & estimate > 0 ~ "v2.6+PR",
+    adj.p.value <  0.05 & estimate < 0 ~ "v2.6",
+    adj.p.value >= 0.05                ~ "No difference"
   )) |>
-  ggplot(aes(x = as_factor(0), y = estimate, ymin = conf.low, ymax = conf.high,
-             color = signif)) +
+  ggplot(aes(x = erasure, y = estimate, ymin = conf.low,
+             ymax = conf.high, color = adv)) +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
   geom_point() +
   geom_errorbar(width = 0.1) +
-  scale_color_manual(name = "Significance:",
-                     values = c("gray70", "steelblue", "firebrick")) +
-  scale_y_continuous(labels = abbreviate) +
-  facet_grid(size ~ erasure, scales = "free_y") +
+  scale_color_manual(
+    name = "Speed advantage:",
+    values = c("v2.6+PR"="#E69F00", "No difference"="grey70", "v2.6"="#0072B2"),
+    drop = FALSE
+  ) +
+  facet_grid(size ~ ., scales = "free_y") +
   labs(x = NULL, y = "Estimated difference (seconds)", color = "") +
   theme_bw() +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        panel.grid.major.x = element_blank())
+  theme(legend.position = "bottom")
