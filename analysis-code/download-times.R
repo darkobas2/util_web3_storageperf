@@ -1,5 +1,7 @@
 library(tidyverse)
 library(ggbeeswarm)
+library(lme4)
+library(ggfortify)
 
 
 
@@ -91,6 +93,23 @@ downloadDat |>
   theme_bw() +
   theme(legend.position = "bottom")
 
+# Both strategies, merging the different servers:
+downloadDat |>
+  mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
+  mutate(size_b = 1000*size_kb) |>
+  ggplot(aes(x = size_b, y = time_sec, color = dataset,
+             group = str_c(erasure, size_b, dataset))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.6) +
+  scale_x_log10(labels = scales::label_bytes()) +
+  scale_y_log10() +
+  scale_color_manual(values = c("#0072B2", "#E69F00")) +
+  labs(x = "File size", y = "Download time (seconds)",
+       color = "Dataset: ", fill = "Dataset: ") +
+  facet_grid(erasure ~ strategy) +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
 
 # Comparison of time z-scores (to fix issues of scale)
 # For the DATA strategy:
@@ -121,6 +140,22 @@ downloadDat |>
   labs(x = "File size", y = "Download time (z-score)",
        color = "Dataset: ", fill = "Dataset: ") +
   facet_grid(erasure ~ server) +
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Both strategies, merging the different servers:
+downloadDat |>
+  mutate(ztime = ztrans(time_sec),
+         .by = c(size, server, erasure, strategy)) |>
+  mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
+  ggplot(aes(x = size, y = ztime, color = dataset, fill = dataset,
+             group = str_c(erasure, size, dataset))) +
+  geom_quasirandom(alpha = 0.3, dodge.width = 0.8) +
+  scale_color_manual(values = c("#0072B2", "#E69F00")) +
+  labs(x = "File size", y = "Download time (z-score)",
+       color = "Dataset: ", fill = "Dataset: ") +
+  facet_grid(erasure ~ strategy) +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   theme_bw() +
   theme(legend.position = "bottom")
@@ -182,12 +217,11 @@ downloadDat |>
   )) |>
   mutate(adv = fct_relevel(adv, "v2.6", "No difference")) |>
   mutate(strategy = ifelse(strategy == "RACE", "RACE", "NONE/DATA")) |>
-  mutate(server = str_remove(server, "Server ")) |>
   ggplot(aes(x = strategy, y = estimate, ymin = conf.low,
-             ymax = conf.high, color = adv, shape = server)) +
+             ymax = conf.high, color = adv, group = server)) +
   geom_hline(yintercept = 0, alpha = 0.4, linetype = "dashed") +
   geom_point(position = position_dodge(width = 0.5)) +
-  geom_errorbar(width = 0.2, position = position_dodge(width = 0.5)) +
+  geom_errorbar(width = 0.3, position = position_dodge(width = 0.5)) +
   scale_color_manual(
     name = "Speed advantage:",
     values = c("v2.6" = "#0072B2",
@@ -201,3 +235,11 @@ downloadDat |>
   ) +
   theme_bw() +
   theme(legend.position = "bottom")
+
+# Fit GLMM:
+downloadDat |>
+  filter(strategy != "NONE") |>
+  glmer(time_sec ~ I(log(size_kb)^2) + erasure + strategy + dataset +
+          (1 | server),
+        data = _, family = gaussian(link = "log")) |>
+  summary()
