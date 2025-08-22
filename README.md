@@ -1,238 +1,34 @@
 # Web3 Storage Benchmarking Experiment
 
 
+
+### Purpose
+
+The original purpose of this project was to compare data download speeds and reliability across various Web3 storage platforms. We were focusing on three such platforms: IPFS, Swarm, and Arweave. The idea was to first upload files of various sizes to all three platforms, and then to download them under different circumstances. Then, one can compare the times needed for data retrieval and see if some platforms allow quicker downloads than others.
+
+In the meantime the project has evolved, and is currently (as of August 2025) used as a tool to check how new Swarm features affect up- and download speeds. This means that much of the data analysis consists of comparing results from two different runs of the experiment; one without, and one with some feature. Recently, we compared the performance of the 2.5 and 2.6 releases this way, as well as 2.6 with the same release but with PR 5097 enabled.
+
+
+
 ### Experimental design
 
-The purpose of this project is to compare data download speeds and reliability across various Web3 storage platforms. We are currently focusing on three such platforms: IPFS, Swarm, and Arweave. The idea is to first upload files of various sizes to all three platforms, and then to download them under different circumstances. Then, one can compare the times needed for data retrieval and see if some platforms allow quicker downloads than others.
+Here is a description of the current experimental design, as it stands in August 2025. The purpose is to measure up- and download speeds on Swarm for various file sizes, erasure settings, and retrieval strategies. We vary all parameters in a fully-factorial way, to get at all their possible combinations. The factors are as follows:
 
-We want to implement the speed comparison as a proper, repeatable, well-designed digital experiment. In the experiment, we upload random data with fixed size first, and later retrieve them, measuring download speeds. The following factors should be varied in the experiment, in a fully factorial way:^[With some exceptions, to be detailed later.]
+- `size`: The size of the uploaded random file. We have 6 distinct factor levels: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, and 50 MB. Every file has a size that matches one of these values exactly. Importantly, every single upload is a unique random file, even if the file sizes are otherwise equal---this removes the confounding effects of caching.
+- `erasure`: The strength of erasure coding. We have five factor levels: `0` (= `NONE`), `1` (= `MEDIUM`), `2` (= `STRONG`), `3` (= `INSANE`), and `4` (= `PARANOID`).
+- `strategy`: The retrieval strategy used to download the file. Its value is necessarily `NONE` in the absence of erasure coding---i.e., when `erasure = 0`. Otherwise, it is either `DATA` or `RACE`.
+- `server`: The identity of the server initiating the downloads might influence download speeds. For a fair comparison, servers should be identical within an experiment, but it makes sense to perform the whole experimental suite over multiple different servers, to control for server-specific effects. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used. Here we use three distinct servers: `Server 1`, `Server 2`, and `Server 3`.
+- `replicate`: To gain sufficient sample sizes for proper statistical analysis, every single combination of the above factors is replicated 30 times. For example, given the unique combination of 1MB files uploaded without erasure coding on Server 1, we actually up- and downloaded at least 30 such files (each being a unique random file).
 
-- `size_kb`: The size of the uploaded random file, in kilobytes. Importantly, every single upload should be with a unique random file, even if the file size is otherwise equal. The 6 distinct factor levels of file size are: 1KB, 10KB, 100KB, 1MB, 10MB, and 100MB.
-- `platform`: Whether the target platform is IPFS, Swarm, or Arweave. Additionally, Swarm itself breaks up into several factors depending on:
-  - the strength of erasure coding employed (`0` = None, `1` = Medium, `2` = Strong, `3` = Insane, and `4` = Paranoid);
-  - whether there is a checkbook enabled to fund bandwidth incentives (`cb`) or there is no checkbook (`ncb`), although for now we are focusing solely on the `cb` option;
-  - the used redundancy strategy (we use `NONE` whenever erasure coding is set to 0; otherwise we use `DATA` and `RACE`).
+The above design has (6 file sizes) x (5 erasure code levels) x (3 retrieval strategies) x (3 servers) x (30 replicates). However, the `NONE` retrieval strategy is only ever used when `erasure` is `NONE`, and the `DATA` and `RACE` strategies only when `erasure` is not `NONE`. So the total number of unique download experiments is (30 replicates) x (6 file sizes) x (3 servers) x (1 strategy & erasure level + 2 strategies x 4 erasure levels), or 4860.
 
-  Taken together, these lead to 11 distinct factor levels for `platform`, namely `IPFS`, `Arweave`, and all combinations of the above for Swarm: `Swarm_0_cb_NONE`, `Swarm_1_cb_DATA`, `Swarm_2_cb_DATA`, `Swarm_3_cb_DATA`, `Swarm_4_cb_DATA`, `Swarm_1_cb_RACE`, `Swarm_2_cb_RACE`, `Swarm_3_cb_RACE`, and `Swarm_4_cb_RACE`. (Note: eventually we might also have `nbc`-variants of all these, like `Swarm_0_ncb_NONE`, etc. For now we are not dealing with the checkbook though.)
-- `server`: The identity of the server initiating the downloads might influence download speeds. So the experiment should be repeated on multiple different servers. This means that we have an extra experimental factor, with as many distinct levels as the number of distinct servers used.
-- `replicate`: To gain sufficient sample sizes for a proper statistical analysis, every single combination of the above factors should be replicated 30 times.
+Some further notes about the experimental design:
 
-Assuming a single server, the above design leads to (6 filesizes) x (11 platforms) x (1 server) x (30 replicates) = 1980 unique download experiments. For *x* servers, we have 1980*x* experiments. So for 3 servers, that is 5940 measured downloads.
+-   All uploads are direct, as opposed to deferred.
+-   We need to make sure that no download starts after the system has properly stored the data. Since our files are relatively small, uploading should be done in a few minutes at most (as we will see later, the longest upload in our data took below 3 minutes). So we opted for a crude but reliable way of eliminating any syncing issues: we waited exactly 2 hours after every upload, and began downloading only then.
+-   All downloads are done using nodes with an active chequebook.
+-   Every download is re-attempted in case of a failure. In total, 15 attempts are made before giving up and declaring that the file cannot be retrieved.
 
-To summarize the experimental combinations we currently need to implement, here is a table of them assuming we are using 3 servers:
-
-|platform | erasure coding| retrieval strategy| file size (KB)| server| replicates|
-|:--------|--------------:|------------------:|--------------:|------:|----------:|
-|Arweave  |               |                   |              1|      1|         30|
-|Arweave  |               |                   |              1|      2|         30|
-|Arweave  |               |                   |              1|      3|         30|
-|Arweave  |               |                   |             10|      1|         30|
-|Arweave  |               |                   |             10|      2|         30|
-|Arweave  |               |                   |             10|      3|         30|
-|Arweave  |               |                   |            100|      1|         30|
-|Arweave  |               |                   |            100|      2|         30|
-|Arweave  |               |                   |            100|      3|         30|
-|Arweave  |               |                   |          1 000|      1|         30|
-|Arweave  |               |                   |          1 000|      2|         30|
-|Arweave  |               |                   |          1 000|      3|         30|
-|Arweave  |               |                   |         10 000|      1|         30|
-|Arweave  |               |                   |         10 000|      2|         30|
-|Arweave  |               |                   |         10 000|      3|         30|
-|Arweave  |               |                   |        100 000|      1|         30|
-|Arweave  |               |                   |        100 000|      2|         30|
-|Arweave  |               |                   |        100 000|      3|         30|
-|IPFS     |               |                   |              1|      1|         30|
-|IPFS     |               |                   |              1|      2|         30|
-|IPFS     |               |                   |              1|      3|         30|
-|IPFS     |               |                   |             10|      1|         30|
-|IPFS     |               |                   |             10|      2|         30|
-|IPFS     |               |                   |             10|      3|         30|
-|IPFS     |               |                   |            100|      1|         30|
-|IPFS     |               |                   |            100|      2|         30|
-|IPFS     |               |                   |            100|      3|         30|
-|IPFS     |               |                   |          1 000|      1|         30|
-|IPFS     |               |                   |          1 000|      2|         30|
-|IPFS     |               |                   |          1 000|      3|         30|
-|IPFS     |               |                   |         10 000|      1|         30|
-|IPFS     |               |                   |         10 000|      2|         30|
-|IPFS     |               |                   |         10 000|      3|         30|
-|IPFS     |               |                   |        100 000|      1|         30|
-|IPFS     |               |                   |        100 000|      2|         30|
-|IPFS     |               |                   |        100 000|      3|         30|
-|Swarm    |              0|               NONE|              1|      1|         30|
-|Swarm    |              0|               NONE|              1|      2|         30|
-|Swarm    |              0|               NONE|              1|      3|         30|
-|Swarm    |              0|               NONE|             10|      1|         30|
-|Swarm    |              0|               NONE|             10|      2|         30|
-|Swarm    |              0|               NONE|             10|      3|         30|
-|Swarm    |              0|               NONE|            100|      1|         30|
-|Swarm    |              0|               NONE|            100|      2|         30|
-|Swarm    |              0|               NONE|            100|      3|         30|
-|Swarm    |              0|               NONE|          1 000|      1|         30|
-|Swarm    |              0|               NONE|          1 000|      2|         30|
-|Swarm    |              0|               NONE|          1 000|      3|         30|
-|Swarm    |              0|               NONE|         10 000|      1|         30|
-|Swarm    |              0|               NONE|         10 000|      2|         30|
-|Swarm    |              0|               NONE|         10 000|      3|         30|
-|Swarm    |              0|               NONE|        100 000|      1|         30|
-|Swarm    |              0|               NONE|        100 000|      2|         30|
-|Swarm    |              0|               NONE|        100 000|      3|         30|
-|Swarm    |              1|               DATA|              1|      1|         30|
-|Swarm    |              1|               DATA|              1|      2|         30|
-|Swarm    |              1|               DATA|              1|      3|         30|
-|Swarm    |              1|               DATA|             10|      1|         30|
-|Swarm    |              1|               DATA|             10|      2|         30|
-|Swarm    |              1|               DATA|             10|      3|         30|
-|Swarm    |              1|               DATA|            100|      1|         30|
-|Swarm    |              1|               DATA|            100|      2|         30|
-|Swarm    |              1|               DATA|            100|      3|         30|
-|Swarm    |              1|               DATA|          1 000|      1|         30|
-|Swarm    |              1|               DATA|          1 000|      2|         30|
-|Swarm    |              1|               DATA|          1 000|      3|         30|
-|Swarm    |              1|               DATA|         10 000|      1|         30|
-|Swarm    |              1|               DATA|         10 000|      2|         30|
-|Swarm    |              1|               DATA|         10 000|      3|         30|
-|Swarm    |              1|               DATA|        100 000|      1|         30|
-|Swarm    |              1|               DATA|        100 000|      2|         30|
-|Swarm    |              1|               DATA|        100 000|      3|         30|
-|Swarm    |              1|               RACE|              1|      1|         30|
-|Swarm    |              1|               RACE|              1|      2|         30|
-|Swarm    |              1|               RACE|              1|      3|         30|
-|Swarm    |              1|               RACE|             10|      1|         30|
-|Swarm    |              1|               RACE|             10|      2|         30|
-|Swarm    |              1|               RACE|             10|      3|         30|
-|Swarm    |              1|               RACE|            100|      1|         30|
-|Swarm    |              1|               RACE|            100|      2|         30|
-|Swarm    |              1|               RACE|            100|      3|         30|
-|Swarm    |              1|               RACE|          1 000|      1|         30|
-|Swarm    |              1|               RACE|          1 000|      2|         30|
-|Swarm    |              1|               RACE|          1 000|      3|         30|
-|Swarm    |              1|               RACE|         10 000|      1|         30|
-|Swarm    |              1|               RACE|         10 000|      2|         30|
-|Swarm    |              1|               RACE|         10 000|      3|         30|
-|Swarm    |              1|               RACE|        100 000|      1|         30|
-|Swarm    |              1|               RACE|        100 000|      2|         30|
-|Swarm    |              1|               RACE|        100 000|      3|         30|
-|Swarm    |              2|               DATA|              1|      1|         30|
-|Swarm    |              2|               DATA|              1|      2|         30|
-|Swarm    |              2|               DATA|              1|      3|         30|
-|Swarm    |              2|               DATA|             10|      1|         30|
-|Swarm    |              2|               DATA|             10|      2|         30|
-|Swarm    |              2|               DATA|             10|      3|         30|
-|Swarm    |              2|               DATA|            100|      1|         30|
-|Swarm    |              2|               DATA|            100|      2|         30|
-|Swarm    |              2|               DATA|            100|      3|         30|
-|Swarm    |              2|               DATA|          1 000|      1|         30|
-|Swarm    |              2|               DATA|          1 000|      2|         30|
-|Swarm    |              2|               DATA|          1 000|      3|         30|
-|Swarm    |              2|               DATA|         10 000|      1|         30|
-|Swarm    |              2|               DATA|         10 000|      2|         30|
-|Swarm    |              2|               DATA|         10 000|      3|         30|
-|Swarm    |              2|               DATA|        100 000|      1|         30|
-|Swarm    |              2|               DATA|        100 000|      2|         30|
-|Swarm    |              2|               DATA|        100 000|      3|         30|
-|Swarm    |              2|               RACE|              1|      1|         30|
-|Swarm    |              2|               RACE|              1|      2|         30|
-|Swarm    |              2|               RACE|              1|      3|         30|
-|Swarm    |              2|               RACE|             10|      1|         30|
-|Swarm    |              2|               RACE|             10|      2|         30|
-|Swarm    |              2|               RACE|             10|      3|         30|
-|Swarm    |              2|               RACE|            100|      1|         30|
-|Swarm    |              2|               RACE|            100|      2|         30|
-|Swarm    |              2|               RACE|            100|      3|         30|
-|Swarm    |              2|               RACE|          1 000|      1|         30|
-|Swarm    |              2|               RACE|          1 000|      2|         30|
-|Swarm    |              2|               RACE|          1 000|      3|         30|
-|Swarm    |              2|               RACE|         10 000|      1|         30|
-|Swarm    |              2|               RACE|         10 000|      2|         30|
-|Swarm    |              2|               RACE|         10 000|      3|         30|
-|Swarm    |              2|               RACE|        100 000|      1|         30|
-|Swarm    |              2|               RACE|        100 000|      2|         30|
-|Swarm    |              2|               RACE|        100 000|      3|         30|
-|Swarm    |              3|               DATA|              1|      1|         30|
-|Swarm    |              3|               DATA|              1|      2|         30|
-|Swarm    |              3|               DATA|              1|      3|         30|
-|Swarm    |              3|               DATA|             10|      1|         30|
-|Swarm    |              3|               DATA|             10|      2|         30|
-|Swarm    |              3|               DATA|             10|      3|         30|
-|Swarm    |              3|               DATA|            100|      1|         30|
-|Swarm    |              3|               DATA|            100|      2|         30|
-|Swarm    |              3|               DATA|            100|      3|         30|
-|Swarm    |              3|               DATA|          1 000|      1|         30|
-|Swarm    |              3|               DATA|          1 000|      2|         30|
-|Swarm    |              3|               DATA|          1 000|      3|         30|
-|Swarm    |              3|               DATA|         10 000|      1|         30|
-|Swarm    |              3|               DATA|         10 000|      2|         30|
-|Swarm    |              3|               DATA|         10 000|      3|         30|
-|Swarm    |              3|               DATA|        100 000|      1|         30|
-|Swarm    |              3|               DATA|        100 000|      2|         30|
-|Swarm    |              3|               DATA|        100 000|      3|         30|
-|Swarm    |              3|               RACE|              1|      1|         30|
-|Swarm    |              3|               RACE|              1|      2|         30|
-|Swarm    |              3|               RACE|              1|      3|         30|
-|Swarm    |              3|               RACE|             10|      1|         30|
-|Swarm    |              3|               RACE|             10|      2|         30|
-|Swarm    |              3|               RACE|             10|      3|         30|
-|Swarm    |              3|               RACE|            100|      1|         30|
-|Swarm    |              3|               RACE|            100|      2|         30|
-|Swarm    |              3|               RACE|            100|      3|         30|
-|Swarm    |              3|               RACE|          1 000|      1|         30|
-|Swarm    |              3|               RACE|          1 000|      2|         30|
-|Swarm    |              3|               RACE|          1 000|      3|         30|
-|Swarm    |              3|               RACE|         10 000|      1|         30|
-|Swarm    |              3|               RACE|         10 000|      2|         30|
-|Swarm    |              3|               RACE|         10 000|      3|         30|
-|Swarm    |              3|               RACE|        100 000|      1|         30|
-|Swarm    |              3|               RACE|        100 000|      2|         30|
-|Swarm    |              3|               RACE|        100 000|      3|         30|
-|Swarm    |              4|               DATA|              1|      1|         30|
-|Swarm    |              4|               DATA|              1|      2|         30|
-|Swarm    |              4|               DATA|              1|      3|         30|
-|Swarm    |              4|               DATA|             10|      1|         30|
-|Swarm    |              4|               DATA|             10|      2|         30|
-|Swarm    |              4|               DATA|             10|      3|         30|
-|Swarm    |              4|               DATA|            100|      1|         30|
-|Swarm    |              4|               DATA|            100|      2|         30|
-|Swarm    |              4|               DATA|            100|      3|         30|
-|Swarm    |              4|               DATA|          1 000|      1|         30|
-|Swarm    |              4|               DATA|          1 000|      2|         30|
-|Swarm    |              4|               DATA|          1 000|      3|         30|
-|Swarm    |              4|               DATA|         10 000|      1|         30|
-|Swarm    |              4|               DATA|         10 000|      2|         30|
-|Swarm    |              4|               DATA|         10 000|      3|         30|
-|Swarm    |              4|               DATA|        100 000|      1|         30|
-|Swarm    |              4|               DATA|        100 000|      2|         30|
-|Swarm    |              4|               DATA|        100 000|      3|         30|
-|Swarm    |              4|               RACE|              1|      1|         30|
-|Swarm    |              4|               RACE|              1|      2|         30|
-|Swarm    |              4|               RACE|              1|      3|         30|
-|Swarm    |              4|               RACE|             10|      1|         30|
-|Swarm    |              4|               RACE|             10|      2|         30|
-|Swarm    |              4|               RACE|             10|      3|         30|
-|Swarm    |              4|               RACE|            100|      1|         30|
-|Swarm    |              4|               RACE|            100|      2|         30|
-|Swarm    |              4|               RACE|            100|      3|         30|
-|Swarm    |              4|               RACE|          1 000|      1|         30|
-|Swarm    |              4|               RACE|          1 000|      2|         30|
-|Swarm    |              4|               RACE|          1 000|      3|         30|
-|Swarm    |              4|               RACE|         10 000|      1|         30|
-|Swarm    |              4|               RACE|         10 000|      2|         30|
-|Swarm    |              4|               RACE|         10 000|      3|         30|
-|Swarm    |              4|               RACE|        100 000|      1|         30|
-|Swarm    |              4|               RACE|        100 000|      2|         30|
-|Swarm    |              4|               RACE|        100 000|      3|         30|
-
-(The `replicates` column is simply a reminder that each of these rows is replicated 30 times with unique files.)
-
-
-### Notes and remarks on the design
-
-Here are some notes and further points to keep in mind about the experimental design outlined above:
-
-- For Swarm (and only Swarm), upload speeds should also be measured. To do so, one can rely on the tags API to make sure that all chunks have been properly placed and uploaded to the system. When all chunks are placed, that is when upload has properly ended.
-- Every download should be performed twice in a row. This is because the second download will then happen in the presence of caching (if supported by the target platform). So this way we are testing download speeds both with- and without caching. We of course expect downloads to be much faster with caching.
-- Downloading should not start until after the system has properly stored the data. Since our files are relatively small, uploading should be done in about 10-20 minutes at most. So one crude but reliable way of doing the downloads is to wait exactly 2 hours after every upload, and only then begin downloading. This ought to be more than enough time so that syncing issues are not a problem.
-- When testing IPFS, the data should be uploaded from one server but downloaded from another.
 
 
 ### Dependencies
@@ -249,6 +45,7 @@ Running the experiment relies on several Python libraries, including but not lim
 Additionally, external tools such as `curl` and `jq` are used for specific tasks.
 
 
+
 ### Getting Started
 
 1. Ensure you have Python 3 installed on your system.
@@ -258,8 +55,9 @@ Additionally, external tools such as `curl` and `jq` are used for specific tasks
 5. Run the script using the appropriate command-line arguments to perform upload and testing tasks.
 
 
+
 ### Usage
 
 ```bash
-bash run.sh
+bash runswarm.sh
 ```
