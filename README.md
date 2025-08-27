@@ -46,7 +46,7 @@ Additionally, external tools such as `curl` and `jq` are used for specific tasks
 
 
 
-### Getting Started
+### Getting Started with Running the Experiment
 
 1. Ensure you have Python 3 installed on your system.
 2. Clone this repository to your local machine.
@@ -54,10 +54,37 @@ Additionally, external tools such as `curl` and `jq` are used for specific tasks
 4. Configure the script by modifying the `config.json` file and setting environment variables as needed.
 5. Run the script using the appropriate command-line arguments to perform upload and testing tasks.
 
-
-
-### Usage
+Simple usage:
 
 ```bash
 bash runswarm.sh
 ```
+
+
+
+### Organization and Data Analysis Workflow
+
+Results are always assembled in the `data` directory, in a subdirectory labelled with the name of the platform (nowadays we are just focusing on Swarm instead of Arweave and IPFS) and the date of the experiment. For example, the run that was made to test the Swarm 2.6 release belongs in `/data/swarm-2025-07`. The raw data that any such subdirectory should contain are as follows:
+ 
+- A short configuration file called `config.json`. *These might contain sensitive information and are therefore never uploaded to the repo.* In case you need the config file, ask Marko Zidaric to send it to you, and place it in the appropriate subdirectory.
+- A large JSON file called `results_onlyswarm.json`. (The "onlyswarm" refers to the fact that it does not collect data from IPFS and Arweave, although by now that's the default behaviour anyway.) This contains all the measured data on download speeds.
+- A directory called `references`, containing a larger batch of small JSON files. These files will have names like `references_onlyswarm_0_0_2025-07-28_18-15.json` and similar. These contain the measurements on upload speeds.
+
+Make sure that after any one run of the benchmarking experimental suite, things are set up as above. Then do the following. First, the directory `analysis-code` contains a file called `compile-data.R`. This can be run from the command line, like this:
+
+```bash
+Rscript compile-data.R ../data/swarm-2025-07/
+```
+
+This assumes that the call is executed from within the `analysis-code` subdirectory. If not, change the path accordingly. It also assumes that we are working with the data in `swarm-2025-07`, which should also be changed to the folder which contains the data that we actually want to analyze. For this to work, be sure to have `Rscript` installed, a command line tool for R (it comes with the R suite, so installing R will also install Rscript). Note: the above is robust to having or not having a trailing slash, so `Rscript compile-data.R ../data/swarm-2025-07` will also work.
+
+Running the above will create a data file called `swarm.rds` in the same subdirectory that is specified in the command line call. This is a data file in compressed form (R can read it natively) that contains all the information on download data in tidy tabular format. Apart from creating this file, the script will also display a bunch of information in the console screen. This will help in getting a quick overview of how many download failures there have been, and other similar information on data integrity.
+
+To recap: if all went well, the subdirectory of the experiment should now contain (i) the `config.json` file; (ii) the `results_onlyswarm.json` file; (iii) the `references` sub-subdirectory with a bunch of files with upload speed data; and (iv) the `swarm.rds` file which holds the tidy, processed and cleaned data generated from `results_onlyswarm.json`.
+
+This is the point where serious data analysis can begin. To play around with various options and to try things out before deciding on including them in an official report, the `analysis-code` directory has to R scripts:
+
+- `download-times.R`: For analyzing and visualizing download times.
+- `upload-times.R`: The same, but for upload times instead of download times.
+
+To see an actual example of a report and the R code it relies on, check out e.g. `/data/swarm-2025-07/report.qmd`. The `qmd` extension stands for "Quarto Markdown": a dialect of Markdown that allows one to include R code chunks, have them executed in the background, and include their output as tables or figures in the final document (which is a corresponding `report.pdf` file). Note: for any `qmd` file, always assume that your working directory is wherever the `qmd` file resides, so adjust paths accordingly.

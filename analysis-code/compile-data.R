@@ -1,6 +1,7 @@
 # Path to folder with the experiment whose results we are putting in a tidy table:
 clargs <- commandArgs(trailingOnly = TRUE)
-if (length(clargs) > 0) path <- clargs[1] else path <- "../data/swarm-2025-07/"
+if (length(clargs) > 0) path <- clargs[1] else
+  stop("Please provide a path to the current experiment's subdirectory.")
 
 
 library(jsonlite) # Importing JSON files and making them into tables
@@ -110,9 +111,9 @@ prepareData <- function(jsonFile, configFile) {
 # Load data from original JSON file(s), and convert to a tidy table:
 dat <-
   # List of JSON file(s) with download benchmark data:
-  tibble(file = Sys.glob(str_c(path, "results_onlyswarm*.json"))) |>
+  tibble(file = Sys.glob(path(path, "results_onlyswarm*.json"))) |>
   # Configuration file (also in JSON format):
-  mutate(conf = str_c(path, "config.json")) |>
+  mutate(conf = path(path, "config.json")) |>
   # Using these, load the data and put them in a nested table:
   mutate(data = map2(file, conf, prepareData)) |>
   # Unnest the data:
@@ -123,21 +124,29 @@ dat <-
 
 
 # Some simple checks, to gauge data integrity:
-# How many downloads failed?
+cat(str_c("\n\nAny failed downloads (number of files failing the sha256 match):\n\n"))
 dat |> count(sha256_match)
-# What is the distribution of download attempts?
-dat |> count(attempts)
-# What is the distribution of download attempts, conditional on success?
-dat |> filter(sha256_match) |> count(attempts)
-# Are there any weird data points where strategy is NONE, despite erasure coding?
-# (This table should be empty)
-dat |> filter(erasure != "NONE" & strategy == "NONE")
 
-# Number of replicates per factor combination. Should be 30 (or close to 30) everywhere:
+cat(str_c("\n\nDistribution of the number of download attempts ",
+          "(max 15 before giving up):\n\n"))
+dat |> count(attempts)
+
+cat(str_c("\n\nDistribution of the number of download attempts, conditional on success ",
+          "(i.e., those that did succeed in at most 15 attempts):\n\n"))
+dat |> filter(sha256_match) |> count(attempts)
+
+cat(str_c("\n\nAny weird data points where strategy = NONE despite erasure coding ",
+          "(should be none)?\n\n"))
+dat |>
+  filter(erasure != "NONE" & strategy == "NONE") |>
+  (\(x) if (nrow(x) == 0) cat("none\n") else print(x, n = Inf))()
+
+cat(str_c("\n\nNumber of replicates per factor combination ",
+          "(should be 30 everywhere):\n\n"))
 dat |>
   count(platform, server, size_kb, erasure, strategy) |>
   print(n = Inf)
 
 
-# Save data in compressed rds format:
-write_rds(dat, str_c(path, "swarm.rds"), compress = "xz")
+# Save data in compressed rds format, using the specified path:
+write_rds(dat, path(path, "swarm.rds"), compress = "xz")
