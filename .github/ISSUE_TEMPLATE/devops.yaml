@@ -1,0 +1,91 @@
+name: "🚀 DevOps Task"
+description: "Request for infrastructure, CI/CD, monitoring, or other DevOps work."
+title: "[DevOps]: "
+labels: ["devops", "task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for submitting a DevOps request!** Please provide as much detail as possible so we can address your request efficiently.
+
+  - type: dropdown
+    id: task-category
+    attributes:
+      label: Task Category
+      description: What area does this request fall into?
+      options:
+        - "CI/CD (e.g., pipeline change, new job, optimization)"
+        - "Infrastructure (e.g., provision new resource, config change)"
+        - "Monitoring & Alerting (e.g., new dashboard, new alert)"
+        - "Access & Permissions (e.g., new user, new role)"
+        - "Security (e.g., patching, vulnerability, policy)"
+        - "Environment (e.g., new environment, data refresh)"
+        - "Tooling (e.g., install new software, update tool)"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "A clear and concise description of what needs to be done. What is the goal?"
+      placeholder: "e.g., We need to add a new 'linting' stage to the main CI pipeline that runs `eslint`."
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Justification / Business Value
+      description: "Why is this task necessary? What problem does it solve or what value does it add?"
+      placeholder: "e.g., This will improve code quality and catch errors before they reach the staging environment."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "How will we know this task is complete? Please use a checklist format."
+      placeholder: |
+        - [ ] The main pipeline has a new 'lint' stage.
+        - [ ] The 'lint' stage runs the `eslint` command.
+        - [ ] If linting fails, the pipeline fails and blocks deployment.
+        - [ ] If linting succeeds, the pipeline continues.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: environments
+    attributes:
+      label: Environments Affected
+      description: "Which environment(s) does this request apply to?"
+      options:
+        - label: Testnet
+        - label: Mainnet
+        - label: All
+        - label: N/A (e.g., CI pipeline only)
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency / Priority
+      description: How important is this?
+      options:
+        - "P4 - Low (Nice to have)"
+        - "P3 - Medium (Standard work)"
+        - "P2 - High (Important, time-sensitive)"
+        - "P1 - Critical (Production issue, security breach, blocker)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: tech-details
+    attributes:
+      label: Technical Details / Implementation Notes (Optional)
+      description: "Any specific commands, code snippets, links to documentation, or implementation suggestions."
+      placeholder: |
+        - "Can be run in a `node:22-alpine` container."
+        - "See `package.json` for the lint script: `npm run lint`"
+        - "Relevant file: `.github/workflows/main.yml`"
