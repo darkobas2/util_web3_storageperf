@@ -1,0 +1,21 @@
+# This config is now portable and can be copied to any repository.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: "❓ Ask a Question"
+    # This relative URL will automatically point to the
+    # "Discussions" tab *of this specific repository*.
+    url: /discussions
+    about: "Please ask support questions and get help from the community here."
+
+  - name: "🛡️ Report a Security Vulnerability"
+    # This will point to the "Security" > "Advisories" page.
+    url: /security/advisories
+    about: "Please report security vulnerabilities responsibly."
+    
+  - name: "💬 Join our Community Chat"
+    # NOTE: You MUST use a full, absolute URL for external sites.
+    # This part cannot be templatized.
+    url: https://discord.gg/m5fJg4XK
+    about: "Get real-time help and chat with the team."
